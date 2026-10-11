@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Xcode
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+.build/
+.swiftpm/
+*.xcresult
+
+# API (see also api/.gitignore)
+node_modules/
+.env
+.env.*
+!.env.example
+.vercel/
+.pglite/
