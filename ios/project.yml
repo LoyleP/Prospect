@@ -14,8 +14,6 @@ settings:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "2.0.0"
     CURRENT_PROJECT_VERSION: "1"
-    # Base URL of the Prospect API (the Vercel deployment of api/). Change it here, then run xcodegen.
-    API_BASE_URL: https://prospect-api.vercel.app
 
 packages:
   KeychainAccess:
@@ -43,7 +41,6 @@ targets:
         CFBundleDisplayName: Prospect
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
-        APIBaseURL: $(API_BASE_URL)
         NSSupportsLiveActivities: true
         UILaunchScreen:
           UIColorName: LaunchBackground
@@ -52,10 +49,26 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
-        NSLocalNetworkUsageDescription: Permet de se connecter au serveur de développement sur votre réseau local.
-        # Lets Debug builds talk to a local API (npm run dev → http://localhost:3000).
-        NSAppTransportSecurity:
-          NSAllowsLocalNetworking: true
+        NSCameraUsageDescription: La caméra sert à scanner l'invitation de l'organisateur.
+        # prospect://join?i=… opens an invitation.
+        CFBundleURLTypes:
+          - CFBundleURLName: com.flow.Prospect
+            CFBundleURLSchemes:
+              - prospect
+        # An agent's end-of-day file (.prospects), encrypted to the organizer; AirDrop and Mail open it in Prospect.
+        UTExportedTypeDeclarations:
+          - UTTypeIdentifier: com.flow.prospect.handover
+            UTTypeDescription: Envoi Prospect
+            UTTypeConformsTo:
+              - public.data
+            UTTypeTagSpecification:
+              public.filename-extension:
+                - prospects
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Envoi Prospect
+            LSHandlerRank: Owner
+            LSItemContentTypes:
+              - com.flow.prospect.handover
     dependencies:
       - package: KeychainAccess
       - target: ProspectLiveActivity

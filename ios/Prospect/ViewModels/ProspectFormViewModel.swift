@@ -24,7 +24,7 @@ final class ProspectFormViewModel {
     var errorMessage: String?
 
     let mode: ProspectFormMode
-    /// Identifies this form's prospect. A retry after a network drop reuses it, so nothing is duplicated.
+    /// Identifies this form's prospect, so saving twice (a double tap) never creates two.
     @ObservationIgnored let clientId = UUID()
     @ObservationIgnored private let authorName: String
     let programs: [Program]
@@ -110,12 +110,7 @@ final class ProspectFormViewModel {
             switch mode {
             case .create(let session):
                 if let programId { UserDefaults.standard.set(programId.uuidString, forKey: Self.lastProgramKey(session.id)) }
-                do {
-                    return try await service.createProspect(sessionId: session.id, input)
-                } catch let error as APIError where error.status == 0 {
-                    // No network: keep it on the phone and send it later.
-                    return PendingProspectStore.shared.enqueue(sessionId: session.id, input: input, authorName: authorName)
-                }
+                return try await service.createProspect(sessionId: session.id, input)
             case .edit(let existing):
                 return try await service.updateProspect(id: existing.id, input)
             }

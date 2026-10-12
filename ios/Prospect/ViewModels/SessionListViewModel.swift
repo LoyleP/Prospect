@@ -18,6 +18,7 @@ final class SessionListViewModel {
     var showNewSessionSheet = false
     var newSessionName: String = ""
     var newSessionDate: Date = .now
+    var newSessionEndsAt: Date?
 
     var canCreate: Bool {
         !newSessionName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -28,6 +29,7 @@ final class SessionListViewModel {
     var editSessionName: String = ""
     var editSessionDate: Date = .now
     var editSessionStatut: SessionStatut = .pasCommence
+    var editSessionEndsAt: Date?
 
     var canUpdate: Bool {
         !editSessionName.trimmingCharacters(in: .whitespaces).isEmpty
@@ -66,8 +68,12 @@ final class SessionListViewModel {
                 name: newSessionName.trimmingCharacters(in: .whitespaces),
                 date: newSessionDate
             )
+            if let endsAt = newSessionEndsAt {
+                _ = try await service.updateSession(id: created.id, SessionPatch(endsAt: endsAt))
+            }
             newSessionName = ""
             newSessionDate = .now
+            newSessionEndsAt = nil
             showNewSessionSheet = false
             selectedSummary = created
             await load()
@@ -80,6 +86,7 @@ final class SessionListViewModel {
         editSessionName   = summary.name
         editSessionDate   = summary.session.displayDate ?? .now
         editSessionStatut = summary.statutSession
+        editSessionEndsAt = summary.session.endsAt
         sessionToEdit     = summary
     }
 
@@ -91,7 +98,8 @@ final class SessionListViewModel {
             _ = try await service.updateSession(id: session.id, SessionPatch(
                 name: editSessionName.trimmingCharacters(in: .whitespaces),
                 date: Session.isoDay(editSessionDate),
-                status: editSessionStatut
+                status: editSessionStatut,
+                endsAt: editSessionEndsAt
             ))
             sessionToEdit = nil
             await load()

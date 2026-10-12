@@ -1,35 +1,21 @@
 // Services/ProspectService.swift
-// Every data operation of the app, scoped to the organization currently selected in AppState.
-// ViewModels call these methods only — they never build URLs or touch the network.
+// Every data operation of the app, answered from the phone's own store. There is no server: ViewModels
+// call these methods and never know where the data lives.
+import CryptoKit
 import Foundation
 
 protocol ProspectServiceProtocol: Sendable {
-    // Account
-    func fetchMe() async throws -> MeResponse
-    func updateMe(displayName: String?, programIds: [UUID]?) async throws
-    func createOrganization(name: String, eventLabel: String) async throws -> Organization
-    func joinOrganization(adminCode: String) async throws -> Organization
-    func updateOrganization(name: String?, eventLabel: String?) async throws -> Organization
-    func regenerateAdminCode() async throws -> Organization
-
     // Programs
     func fetchPrograms() async throws -> [Program]
     func createProgram(name: String, color: String?) async throws -> Program
     func updateProgram(id: UUID, name: String?, color: String?, sortOrder: Int?) async throws -> Program
     func deleteProgram(id: UUID) async throws
 
-    // Admins
-    func fetchAdmins() async throws -> [Admin]
-    func removeAdmin(userId: UUID) async throws
-
     // Events
     func fetchSessionSummaries() async throws -> [SessionSummary]
     func createSession(name: String, date: Date) async throws -> SessionSummary
     func updateSession(id: UUID, _ patch: SessionPatch) async throws -> SessionSummary
     func deleteSession(id: UUID) async throws
-    func regenerateCode(sessionId: UUID, role: Role) async throws -> SessionSummary
-    func fetchParticipants(sessionId: UUID) async throws -> [Participant]
-    func removeParticipant(sessionId: UUID, participantId: UUID) async throws
 
     // Prospects
     func fetchProspects(sessionId: UUID) async throws -> [Prospect]
@@ -47,150 +33,203 @@ struct MyStats: Decodable, Sendable, Equatable {
     let rdv: Int
 }
 
-final class ProspectService: ProspectServiceProtocol, @unchecked Sendable {
-    static let shared = ProspectService()
+enum ServiceError: LocalizedError, Equatable {
+    case notFound, notAllowed, noIdentity
 
-    /// What view models should use by default: the demo backend when the debug menu enabled it,
-    /// the real API otherwise. Read when a view model is created.
+    var errorDescription: String? {
+        switch self {
+        case .notFound:   return "Élément introuvable."
+        case .notAllowed: return "Seul l'organisateur peut faire cela."
+        case .noIdentity: return "Choisissez d'abord votre nom."
+        }
+    }
+}
+
+final class ProspectService: ProspectServiceProtocol, @unchecked Sendable {
+    static let shared = ProspectService(store: .shared, keys: KeychainKeyVault())
+
+    /// What view models use by default: the debug demo store when one is active, the real store otherwise.
     nonisolated(unsafe) static var override: ProspectServiceProtocol?
     static var current: ProspectServiceProtocol { override ?? shared }
 
-    private let api: APIClient
-    private let lock = NSLock()
-    private var _organizationId: UUID?
+    let store: LocalStore
+    let keys: KeyVault
 
-    init(api: APIClient = .shared) {
-        self.api = api
+    init(store: LocalStore, keys: KeyVault) {
+        self.store = store
+        self.keys = keys
     }
 
-    /// Set by AppState whenever the user switches organization.
-    var organizationId: UUID? {
-        get { lock.withLock { _organizationId } }
-        set { lock.withLock { _organizationId = newValue } }
-    }
+    // MARK: Time
 
-    private func org(_ suffix: String = "") throws -> String {
-        guard let id = organizationId else { throw APIError(status: 404, code: "no_organization", message: "No organization selected") }
-        return "/orgs/\(id.uuidString.lowercased())\(suffix)"
-    }
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    static func iso(_ date: Date = Date()) -> String { isoFormatter.string(from: date) }
 
-    private func path(_ id: UUID) -> String { id.uuidString.lowercased() }
-
-    // MARK: - Account
-
-    func fetchMe() async throws -> MeResponse {
-        try await api.get("/me")
-    }
-
-    func updateMe(displayName: String?, programIds: [UUID]?) async throws {
-        struct Body: Encodable { let display_name: String?; let program_ids: [UUID]? }
-        let _: NoContent = try await api.patch("/me", Body(display_name: displayName, program_ids: programIds))
-    }
-
-    func createOrganization(name: String, eventLabel: String) async throws -> Organization {
-        try await api.post("/orgs", ["name": name, "event_label": eventLabel])
-    }
-
-    func joinOrganization(adminCode: String) async throws -> Organization {
-        try await api.post("/orgs/join", ["admin_code": adminCode])
-    }
-
-    func updateOrganization(name: String?, eventLabel: String?) async throws -> Organization {
-        struct Body: Encodable { let name: String?; let event_label: String? }
-        return try await api.patch(try org(), Body(name: name, event_label: eventLabel))
-    }
-
-    func regenerateAdminCode() async throws -> Organization {
-        try await api.post(try org("/admin-code"))
-    }
-
-    // MARK: - Programs
+    // MARK: Programs
 
     func fetchPrograms() async throws -> [Program] {
-        try await api.get(try org("/programs"))
+        store.read { $0.programs.sorted { $0.sortOrder < $1.sortOrder } }
     }
 
     func createProgram(name: String, color: String?) async throws -> Program {
-        struct Body: Encodable { let name: String; let color: String? }
-        return try await api.post(try org("/programs"), Body(name: name, color: color))
+        store.write { state in
+            let program = Program(id: UUID(), name: name, color: color ?? Program.palette[state.programs.count % Program.palette.count],
+                                  sortOrder: (state.programs.map(\.sortOrder).max() ?? -1) + 1)
+            state.programs.append(program)
+            return program
+        }
     }
 
     func updateProgram(id: UUID, name: String?, color: String?, sortOrder: Int?) async throws -> Program {
-        struct Body: Encodable { let name: String?; let color: String?; let sort_order: Int? }
-        return try await api.patch(try org("/programs/\(path(id))"), Body(name: name, color: color, sort_order: sortOrder))
+        try store.write { state in
+            guard let i = state.programs.firstIndex(where: { $0.id == id }) else { throw ServiceError.notFound }
+            if let name { state.programs[i].name = name }
+            if let color { state.programs[i].color = color }
+            if let sortOrder { state.programs[i].sortOrder = sortOrder }
+            return state.programs[i]
+        }
     }
 
     func deleteProgram(id: UUID) async throws {
-        try await api.delete(try org("/programs/\(path(id))"))
+        store.write { state in
+            state.programs.removeAll { $0.id == id }
+            for e in state.events.indices {
+                state.events[e].programObjectives[id.uuidString] = nil
+                for p in state.events[e].prospects.indices where state.events[e].prospects[p].programId == id {
+                    state.events[e].prospects[p].programId = nil
+                }
+            }
+        }
     }
 
-    // MARK: - Admins
+    // MARK: Events
 
-    func fetchAdmins() async throws -> [Admin] {
-        try await api.get(try org("/admins"))
+    private func summary(_ e: StoredEvent) -> SessionSummary {
+        SessionSummary(session: e.session, prospectCount: e.activeProspects.count)
     }
-
-    func removeAdmin(userId: UUID) async throws {
-        try await api.delete(try org("/admins/\(path(userId))"))
-    }
-
-    // MARK: - Events
 
     func fetchSessionSummaries() async throws -> [SessionSummary] {
-        try await api.get(try org("/events"))
+        store.read { $0.events.sorted { $0.date > $1.date }.map(summary) }
     }
 
     func createSession(name: String, date: Date) async throws -> SessionSummary {
-        try await api.post(try org("/events"), ["name": name, "date": Session.isoDay(date)])
+        guard let identity = store.read({ $0.identity }) else { throw ServiceError.noIdentity }
+        guard identity.role == .admin else { throw ServiceError.notAllowed }
+        let id = UUID()
+        let key = Curve25519.KeyAgreement.PrivateKey()
+        keys.store(key, for: id)
+        let event = StoredEvent(
+            id: id, name: name, date: Session.isoDay(date), endsAt: nil, status: .enCours, isArchived: false,
+            preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:], createdAt: Self.iso(),
+            organizerName: identity.displayName, organizerPublicKey: key.publicKey.rawRepresentation.base64EncodedString(),
+            isOrganizer: true, prospects: [], receipts: [], lastSentAt: nil, lastSentCount: 0
+        )
+        store.write { $0.events.append(event) }
+        return summary(event)
     }
 
     func updateSession(id: UUID, _ patch: SessionPatch) async throws -> SessionSummary {
-        try await api.patch(try org("/events/\(path(id))"), patch)
+        try store.write { state in
+            guard let i = state.events.firstIndex(where: { $0.id == id }) else { throw ServiceError.notFound }
+            // An agent only keeps their own local copy; the event itself belongs to the organizer.
+            let owns = state.events[i].isOrganizer
+            if owns {
+                if let v = patch.name { state.events[i].name = v }
+                if let v = patch.date { state.events[i].date = v }
+                if let v = patch.status { state.events[i].status = v }
+                if let v = patch.preRegistered { state.events[i].preRegistered = v }
+                if let v = patch.rdvTargetLow { state.events[i].rdvTargetLow = v }
+                if let v = patch.rdvTargetHigh { state.events[i].rdvTargetHigh = v }
+                if let v = patch.programObjectives { state.events[i].programObjectives = v }
+                if let v = patch.endsAt { state.events[i].endsAt = v }
+            }
+            if let v = patch.isArchived { state.events[i].isArchived = v }
+            return summary(state.events[i])
+        }
     }
 
     func deleteSession(id: UUID) async throws {
-        try await api.delete(try org("/events/\(path(id))"))
+        store.write { $0.events.removeAll { $0.id == id } }
+        keys.remove(for: id)
     }
 
-    func regenerateCode(sessionId: UUID, role: Role) async throws -> SessionSummary {
-        try await api.post(try org("/events/\(path(sessionId))/codes"), ["role": role.rawValue])
-    }
-
-    func fetchParticipants(sessionId: UUID) async throws -> [Participant] {
-        try await api.get(try org("/events/\(path(sessionId))/participants"))
-    }
-
-    func removeParticipant(sessionId: UUID, participantId: UUID) async throws {
-        try await api.delete(try org("/events/\(path(sessionId))/participants/\(path(participantId))"))
-    }
-
-    // MARK: - Prospects
+    // MARK: Prospects
 
     func fetchProspects(sessionId: UUID) async throws -> [Prospect] {
-        try await api.get(try org("/events/\(path(sessionId))/prospects"))
+        store.read { state in
+            (state.events.first { $0.id == sessionId }?.activeProspects ?? []).sorted { $0.createdAt > $1.createdAt }
+        }
     }
 
     func createProspect(sessionId: UUID, _ input: ProspectInput) async throws -> Prospect {
-        try await api.post(try org("/events/\(path(sessionId))/prospects"), input)
+        try store.write { state in
+            guard let identity = state.identity else { throw ServiceError.noIdentity }
+            guard let e = state.events.firstIndex(where: { $0.id == sessionId }) else { throw ServiceError.notFound }
+            let id = input.clientId ?? UUID()
+            if let existing = state.events[e].prospects.first(where: { $0.id == id }) { return existing }
+            let now = Self.iso()
+            let p = Prospect(
+                id: id, sessionId: sessionId, prenom: input.prenom, nom: input.nom, email: input.email,
+                telephone: input.telephone, programId: input.programId, niveauActuel: input.niveauActuel,
+                statut: input.statut, notes: input.notes, createdBy: state.deviceId, agentNom: identity.displayName,
+                createdAt: now, updatedAt: now, deletedAt: nil
+            )
+            state.events[e].prospects.append(p)
+            return p
+        }
     }
 
     func updateProspect(id: UUID, _ input: ProspectInput) async throws -> Prospect {
-        try await api.patch(try org("/prospects/\(path(id))"), input)
+        try store.write { state in
+            guard let (e, p) = Self.locate(id, in: state) else { throw ServiceError.notFound }
+            var prospect = state.events[e].prospects[p]
+            prospect.prenom = input.prenom; prospect.nom = input.nom; prospect.email = input.email
+            prospect.telephone = input.telephone; prospect.programId = input.programId
+            prospect.niveauActuel = input.niveauActuel; prospect.statut = input.statut; prospect.notes = input.notes
+            prospect.updatedAt = Self.iso()
+            state.events[e].prospects[p] = prospect
+            return prospect
+        }
     }
 
     func archiveProspect(id: UUID) async throws {
-        let _: Prospect = try await api.post(try org("/prospects/\(path(id))/archive"))
+        try setDeleted(id, to: Self.iso())
     }
 
     func restoreProspect(id: UUID) async throws {
-        let _: Prospect = try await api.post(try org("/prospects/\(path(id))/restore"))
+        try setDeleted(id, to: nil)
+    }
+
+    private func setDeleted(_ id: UUID, to value: String?) throws {
+        try store.write { state in
+            guard let (e, p) = Self.locate(id, in: state) else { throw ServiceError.notFound }
+            state.events[e].prospects[p].deletedAt = value
+            state.events[e].prospects[p].updatedAt = Self.iso()
+        }
     }
 
     func fetchArchivedProspects() async throws -> [Prospect] {
-        try await api.get(try org("/prospects/archived"))
+        store.read { state in
+            state.events.flatMap { $0.prospects.filter { $0.deletedAt != nil } }.sorted { $0.createdAt > $1.createdAt }
+        }
     }
 
     func fetchMyStats() async throws -> MyStats {
-        try await api.get(try org("/stats/me"))
+        store.read { state in
+            let mine = state.events.flatMap { $0.activeProspects }.filter { $0.createdBy == state.deviceId }
+            let rdv = mine.filter { $0.statut == Statut.rdvInfo.rawValue || $0.statut == Statut.rdvAdmission.rawValue }.count
+            return MyStats(prospects: mine.count, events: Set(mine.map(\.sessionId)).count, rdv: rdv)
+        }
+    }
+
+    private static func locate(_ id: UUID, in state: LocalState) -> (Int, Int)? {
+        for (e, event) in state.events.enumerated() {
+            if let p = event.prospects.firstIndex(where: { $0.id == id }) { return (e, p) }
+        }
+        return nil
     }
 }

@@ -40,49 +40,6 @@ final class ProspectFormViewModelTests: XCTestCase {
         XCTAssertEqual(next.programId, programs[1].id)
     }
 
-    func testOfflineSaveIsQueuedAndRetriedWithTheSameId() async {
-        let store = PendingProspectStore.shared
-        store.removeAll()
-        defer { store.removeAll() }
-        let service = MockProspectService()
-        service.errorToThrow = APIError.network
-        let session = TestData.session()
-        let vm = ProspectFormViewModel(mode: .create(session: session), programs: programs, authorName: "Hugo", service: service)
-        filled(vm)
-
-        let saved = await vm.save()
-
-        XCTAssertEqual(saved?.id, vm.clientId, "the list shows the queued prospect under its final id")
-        XCTAssertNil(vm.errorMessage, "going offline is not an error")
-        XCTAssertTrue(store.isPending(vm.clientId))
-
-        service.errorToThrow = APIError.network
-        var result = await store.flush(using: service)
-        XCTAssertTrue(result.sent.isEmpty, "still offline: nothing is lost, nothing is sent")
-        XCTAssertEqual(store.items.count, 1)
-
-        service.errorToThrow = nil
-        result = await store.flush(using: service)
-        XCTAssertEqual(result.sent.count, 1)
-        XCTAssertTrue(store.items.isEmpty)
-        XCTAssertEqual(service.createdInputs.last?.input.clientId, vm.clientId)
-    }
-
-    func testRefusedPendingProspectIsDropped() async {
-        let store = PendingProspectStore.shared
-        store.removeAll()
-        defer { store.removeAll() }
-        let service = MockProspectService()
-        let vm = ProspectFormViewModel(mode: .create(session: TestData.session()), programs: programs, service: service)
-        filled(vm)
-        service.errorToThrow = APIError.network
-        _ = await vm.save()
-        service.errorToThrow = APIError(status: 409, code: "event_archived", message: "")
-        let result = await store.flush(using: service)
-        XCTAssertEqual(result.dropped, 1)
-        XCTAssertTrue(store.items.isEmpty)
-    }
-
     func testCreateModeWithoutProgramsHasNoProgram() {
         let vm = ProspectFormViewModel(mode: .create(session: TestData.session()), programs: [], service: MockProspectService())
         XCTAssertNil(vm.programId)
@@ -127,7 +84,7 @@ final class ProspectFormViewModelTests: XCTestCase {
 
     func testSaveSurfacesErrors() async {
         let service = MockProspectService()
-        service.errorToThrow = APIError(status: 403, code: "forbidden", message: "")
+        service.errorToThrow = ServiceError.notAllowed
         let vm = ProspectFormViewModel(mode: .create(session: TestData.session()), programs: programs, service: service)
         filled(vm)
         let saved = await vm.save()
@@ -143,18 +100,11 @@ final class DashboardViewModelTests: XCTestCase {
         let design = Program(id: UUID(), name: "Design", color: "#9440D9", sortOrder: 1)
         let session = TestData.session(preRegistered: 10)
         let service = MockProspectService()
-        // Admins receive join codes, which is what lets the dashboard load conseillers.
-        service.summaries = [SessionSummary(session: session, prospectCount: 3, agentCode: "AAAAAA", cfCode: "BBBBBB")]
+        service.summaries = [SessionSummary(session: session, prospectCount: 3)]
         service.prospects = [
             TestData.prospect(sessionId: session.id, programId: info.id, statut: .rdvInfo),
             TestData.prospect(sessionId: session.id, programId: info.id, statut: .rdvAdmission),
             TestData.prospect(sessionId: session.id, programId: design.id, statut: .curieux, agent: "Hugo"),
-        ]
-        service.participants = [
-            Participant(id: UUID(), displayName: "Claire", role: .conseillerFormation,
-                        programIds: [info.id], lastSeenAt: nil, createdAt: "2026-10-01T09:00:00.000Z"),
-            Participant(id: UUID(), displayName: "Hugo", role: .agent,
-                        programIds: [], lastSeenAt: nil, createdAt: "2026-10-01T09:00:00.000Z"),
         ]
 
         let vm = DashboardViewModel(service: service)
@@ -166,8 +116,6 @@ final class DashboardViewModelTests: XCTestCase {
         XCTAssertEqual(vm.noShowCount, 7)
         XCTAssertEqual(vm.byProgram.first?.programId, info.id)
         XCTAssertEqual(vm.byProgram.first?.count, 2)
-        XCTAssertEqual(vm.closingByProgram.map(\.program.id), [info.id])
-        XCTAssertEqual(vm.closingByProgram.first?.items.first?.total, 2)
 
         vm.filterPrograms = [design.id]
         XCTAssertEqual(vm.totalProspects, 1)
@@ -215,33 +163,36 @@ final class ProspectListViewModelTests: XCTestCase {
 @MainActor
 final class AppStateTests: XCTestCase {
     func testRolePermissions() {
-        let admin = AppState.preview(role: .admin)
-        XCTAssertTrue(admin.isAdmin)
-        XCTAssertTrue(admin.canEditProspects)
-        XCTAssertTrue(admin.canExport)
+        let organizer = AppState.preview(.organizerFull)
+        XCTAssertTrue(organizer.isAdmin)
+        XCTAssertTrue(organizer.canEditProspects)
+        XCTAssertTrue(organizer.canExport)
 
-        let advisor = AppState.preview(role: .conseillerFormation)
-        XCTAssertFalse(advisor.isAdmin)
-        XCTAssertFalse(advisor.canEditProspects)
-        XCTAssertTrue(advisor.canExport)
-
-        let agent = AppState.preview(role: .agent)
+        let agent = AppState.preview(.agentFull)
+        XCTAssertFalse(agent.isAdmin)
         XCTAssertTrue(agent.canEditProspects)
         XCTAssertFalse(agent.canExport)
     }
 
-    func testPreviewRoleOverridesWithoutChangingRealRole() {
-        let state = AppState.preview(role: .admin)
-        state.previewRole = .agent
-        XCTAssertEqual(state.effectiveRole, .agent)
-        XCTAssertEqual(state.role, .admin)
-        XCTAssertFalse(state.isAdmin)
+    func testFreshPhoneStartsAtOnboarding() {
+        XCTAssertEqual(AppState.preview(.fresh).phase, .onboarding)
+        XCTAssertEqual(AppState.preview(.organizerEmpty).phase, .ready)
     }
 
-    func testEventLabelAndProgramNames() {
-        let state = AppState.preview(eventLabel: "JPO")
-        XCTAssertEqual(state.eventLabel, "JPO")
+    func testProgramNames() {
+        let state = AppState.preview(.organizerFull)
         XCTAssertEqual(state.programName(nil), "Sans programme")
         XCTAssertEqual(state.programName(state.programs[0].id), state.programs[0].name)
+    }
+
+    func testOrganizingAndResettingTheDevice() {
+        let seeded = DemoSeed.make(.fresh)
+        let state = AppState(store: seeded.store, exchange: EventExchange(store: seeded.store, keys: seeded.keys))
+        state.startOrganizing(name: "Camille", eventLabel: "JPO")
+        XCTAssertEqual(state.phase, .ready)
+        XCTAssertEqual(state.eventLabel, "JPO")
+        XCTAssertTrue(state.isAdmin)
+        state.resetDevice()
+        XCTAssertEqual(state.phase, .onboarding)
     }
 }

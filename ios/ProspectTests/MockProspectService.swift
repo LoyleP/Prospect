@@ -5,7 +5,6 @@ import Foundation
 
 final class MockProspectService: ProspectServiceProtocol, @unchecked Sendable {
     var programs: [Program] = []
-    var participants: [Participant] = []
     var summaries: [SessionSummary] = []
     var prospects: [Prospect] = []
     var errorToThrow: Error?
@@ -17,36 +16,20 @@ final class MockProspectService: ProspectServiceProtocol, @unchecked Sendable {
 
     private func check() throws { if let errorToThrow { throw errorToThrow } }
 
-    func fetchMe() async throws -> MeResponse { throw APIError.network }
-    func updateMe(displayName: String?, programIds: [UUID]?) async throws { try check() }
-    func createOrganization(name: String, eventLabel: String) async throws -> Organization {
-        try check()
-        return Organization(id: UUID(), name: name, eventLabel: eventLabel, role: .admin, displayName: "Test", programIds: [])
-    }
-    func joinOrganization(adminCode: String) async throws -> Organization { throw APIError.network }
-    func updateOrganization(name: String?, eventLabel: String?) async throws -> Organization { throw APIError.network }
-    func regenerateAdminCode() async throws -> Organization { throw APIError.network }
-
     func fetchPrograms() async throws -> [Program] { try check(); return programs }
-    func createProgram(name: String, color: String?) async throws -> Program { throw APIError.network }
-    func updateProgram(id: UUID, name: String?, color: String?, sortOrder: Int?) async throws -> Program { throw APIError.network }
+    func createProgram(name: String, color: String?) async throws -> Program { throw ServiceError.notFound }
+    func updateProgram(id: UUID, name: String?, color: String?, sortOrder: Int?) async throws -> Program { throw ServiceError.notFound }
     func deleteProgram(id: UUID) async throws {}
 
-    func fetchAdmins() async throws -> [Admin] { [] }
-    func removeAdmin(userId: UUID) async throws {}
-
     func fetchSessionSummaries() async throws -> [SessionSummary] { try check(); return summaries }
-    func createSession(name: String, date: Date) async throws -> SessionSummary { throw APIError.network }
+    func createSession(name: String, date: Date) async throws -> SessionSummary { throw ServiceError.notFound }
     func updateSession(id: UUID, _ patch: SessionPatch) async throws -> SessionSummary {
         try check()
         sessionPatches.append((id, patch))
-        guard let s = summaries.first(where: { $0.id == id }) else { throw APIError(status: 404, code: "not_found", message: "") }
+        guard let s = summaries.first(where: { $0.id == id }) else { throw ServiceError.notFound }
         return s
     }
     func deleteSession(id: UUID) async throws {}
-    func regenerateCode(sessionId: UUID, role: Role) async throws -> SessionSummary { throw APIError.network }
-    func fetchParticipants(sessionId: UUID) async throws -> [Participant] { try check(); return participants }
-    func removeParticipant(sessionId: UUID, participantId: UUID) async throws {}
 
     func fetchProspects(sessionId: UUID) async throws -> [Prospect] {
         try check()

@@ -53,7 +53,7 @@ final class DebugOverlay {
 
     /// An amber dot on the button while the app runs on demo data, not the real API.
     func refreshBadge() {
-        (window?.rootViewController as? OverlayController)?.setDemoBadge(DemoMode.active != nil)
+        (window?.rootViewController as? OverlayController)?.setDemoBadge(DebugLaunch.active != nil)
     }
 }
 

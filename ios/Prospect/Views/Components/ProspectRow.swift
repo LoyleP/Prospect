@@ -5,7 +5,6 @@ import SwiftUI
 struct ProspectRow: View {
     let prospect: Prospect
     var showsStatus = true
-    var isPending = false
     @Environment(AppState.self) private var appState
 
     var body: some View {
@@ -16,12 +15,6 @@ struct ProspectRow: View {
                 .foregroundStyle(Color.inkPrimary)
                 .lineLimit(1)
             Spacer(minLength: Space.s)
-            if isPending {
-                Image(systemName: "icloud.and.arrow.up")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Color.warning)
-                    .accessibilityLabel("En attente d'envoi")
-            }
             if let program = appState.program(prospect.programId) {
                 HStack(spacing: 6) {
                     Circle().fill(program.swiftUIColor).frame(width: 7, height: 7)

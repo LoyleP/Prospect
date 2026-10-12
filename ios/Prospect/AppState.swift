@@ -1,7 +1,7 @@
 // AppState.swift
-// Global observable state: who is signed in (an admin account, or a participant who joined
-// one event with its code), which organization they're working in, their role there,
-// and that organization's programs.
+// Global observable state. There is no account and no server: the phone either has an identity
+// (a name and a role: organizer or agent) or it is still at onboarding. Events and prospects live in
+// the LocalStore; this object only mirrors what the screens need.
 import Foundation
 import Observation
 
@@ -9,56 +9,52 @@ import Observation
 @MainActor
 final class AppState {
     enum Phase: Equatable {
-        case loading            // signed in, fetching /me
-        case signedOut
-        case needsOrganization  // admin account that belongs to no organization yet
+        case onboarding
         case ready
     }
 
     var phase: Phase
-    var email: String?
-    var userId: UUID?
-    /// Set when this device joined a single event with a code (agent or conseiller).
-    var participantEvent: SessionSummary?
-    var organizations: [Organization] = []
+    /// This phone's workspace (a name and a role). Built from the stored identity.
     var currentOrganization: Organization?
     var programs: [Program] = []
-    var previewRole: Role?
-    var loadError: String?
     var selectedTab: MainTab = .prospects
-    /// Which login tab to open first (set by the debug menu).
-    var loginIntent: LoginIntent?
-    /// Bumped to rebuild the whole UI tree (new view models) when the backend is swapped.
+    /// Which onboarding choice to show first (set by the debug menu).
+    var onboardingIntent: OnboardingIntent?
+    /// Bumped to rebuild the whole UI tree (new view models) when the store is swapped.
     var epoch = 0
 
-    /// A screen to open from outside its view (used by the debug menu).
+    /// A screen to open from outside its view (used by the debug menu and by incoming links).
     var route: Route?
+    /// An invitation opened from a link or scanned, waiting for the person to choose a name.
+    var pendingInvitation: Invitation?
+    /// What the last imported file did, shown once as a toast.
+    var importMessage: String?
 
-    enum Route: Equatable { case newProspect, editProspect, filters, events, newEvent, profile, eventAccess }
-    enum MainTab: Hashable { case prospects, dashboard, archive, team }
-    enum LoginIntent: Equatable { case join, admin, createAccount }
+    enum Route: Equatable { case newProspect, editProspect, filters, events, newEvent, profile, invitation }
+    enum MainTab: Hashable { case prospects, dashboard, archive, exchange }
+    enum OnboardingIntent: Equatable { case organize, join }
 
-    /// Set only by tests and previews; otherwise the live (or demo) service is used.
-    @ObservationIgnored private let injectedService: ProspectServiceProtocol?
-    @ObservationIgnored private var service: ProspectServiceProtocol { injectedService ?? ProspectService.current }
-    @ObservationIgnored private let defaults: UserDefaults
-    @ObservationIgnored private var expiryObserver: NSObjectProtocol?
-    private static let lastOrganizationKey = "lastOrganizationId"
+    private(set) var store: LocalStore
+    private(set) var exchange: EventExchange
+
+    init(store: LocalStore = EventExchange.current.store, exchange: EventExchange = .current) {
+        self.store = store
+        self.exchange = exchange
+        let identity = store.read { $0.identity }
+        self.phase = identity == nil ? .onboarding : .ready
+        refresh()
+    }
 
     // MARK: - Derived
 
     var role: Role { currentOrganization?.role ?? .agent }
-    var effectiveRole: Role { previewRole ?? role }
-    var isAdmin: Bool { effectiveRole == .admin }
-    var isAdminOrCF: Bool { effectiveRole == .admin || effectiveRole == .conseillerFormation }
-    var canExport: Bool { isAdminOrCF }
-    /// Advisors (CF) are read-only on prospects.
-    var canEditProspects: Bool { effectiveRole != .conseillerFormation }
-    var isParticipant: Bool { participantEvent != nil }
+    /// The organizer: creates events, hands out invitations, collects what agents send.
+    var isAdmin: Bool { role == .admin }
+    var canExport: Bool { isAdmin }
+    var canEditProspects: Bool { true }
 
-    /// The member's display name in the current organization.
+    /// The person's display name, written on every prospect they record.
     var agentNom: String { currentOrganization?.displayName ?? "" }
-    /// What the current organization calls its events.
     var eventLabel: String { currentOrganization?.eventLabel ?? "Événement" }
 
     func program(_ id: UUID?) -> Program? {
@@ -70,142 +66,125 @@ final class AppState {
         program(id)?.name ?? "Sans programme"
     }
 
-    // MARK: - Lifecycle
+    // MARK: - Identity
 
-    init(service: ProspectServiceProtocol? = nil, defaults: UserDefaults = .standard) {
-        self.injectedService = service
-        self.defaults = defaults
-        self.phase = AuthService.shared.isSignedIn ? .loading : .signedOut
-        expiryObserver = NotificationCenter.default.addObserver(
-            forName: AuthService.sessionExpired, object: nil, queue: .main
-        ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.resetToSignedOut() }
+    /// Mirrors the store into the screens' state.
+    func refresh() {
+        let (identity, deviceId, programs) = store.read { ($0.identity, $0.deviceId, $0.programs) }
+        self.programs = programs.sorted { $0.sortOrder < $1.sortOrder }
+        if let identity {
+            currentOrganization = Organization(
+                id: deviceId, name: "", eventLabel: identity.eventLabel, role: identity.role,
+                displayName: identity.displayName, programIds: []
+            )
+            phase = .ready
+        } else {
+            currentOrganization = nil
+            phase = .onboarding
         }
     }
 
-    /// Loads the user's organizations and enters the last one used.
-    func bootstrap() async {
-        guard AuthService.shared.isSignedIn else { phase = .signedOut; return }
-        loadError = nil
-        do {
-            switch try await service.fetchMe() {
-            case .participant(_, let org, let event):
-                participantEvent = event
-                organizations = [org]
-                await enter(org)
-            case .admin(let user, let orgs):
-                participantEvent = nil
-                email = user.email
-                userId = user.id
-                organizations = orgs
-                let lastId = defaults.string(forKey: Self.lastOrganizationKey).flatMap(UUID.init(uuidString:))
-                if let org = organizations.first(where: { $0.id == lastId }) ?? organizations.first {
-                    await enter(org)
-                } else {
-                    currentOrganization = nil
-                    phase = .needsOrganization
-                }
-            }
-        } catch let error as APIError where error.status == 401 {
-            resetToSignedOut()
-        } catch {
-            loadError = error.localizedDescription
+    /// Onboarding, organizer side.
+    func startOrganizing(name: String, eventLabel: String) {
+        store.write { $0.identity = StoredIdentity(displayName: name, role: .admin, eventLabel: eventLabel) }
+        refresh()
+    }
+
+    /// Onboarding, agent side: the name, then the invitation that was scanned or opened.
+    func startAsAgent(name: String, invitation: Invitation) throws {
+        store.write { $0.identity = StoredIdentity(displayName: name, role: .agent, eventLabel: invitation.eventLabel) }
+        try exchange.join(invitation)
+        pendingInvitation = nil
+        refresh()
+        EndReminder.schedule(for: invitation)
+    }
+
+    func updateIdentity(displayName: String? = nil, eventLabel: String? = nil) {
+        store.write { state in
+            if let displayName { state.identity?.displayName = displayName }
+            if let eventLabel { state.identity?.eventLabel = eventLabel }
         }
-    }
-
-    func selectOrganization(_ org: Organization) async {
-        previewRole = nil
-        await enter(org)
-    }
-
-    func createOrganization(name: String, eventLabel: String) async throws {
-        await add(try await service.createOrganization(name: name, eventLabel: eventLabel))
-    }
-
-    /// Joins an existing organization as co-admin with its admin code.
-    func joinOrganization(adminCode: String) async throws {
-        await add(try await service.joinOrganization(adminCode: adminCode))
-    }
-
-    private func add(_ org: Organization) async {
-        organizations.removeAll { $0.id == org.id }
-        organizations.append(org)
-        organizations.sort { $0.name.localizedCompare($1.name) == .orderedAscending }
-        await enter(org)
-    }
-
-    /// Applies an organization edit (name, event label, own display name or programs).
-    func apply(_ org: Organization) {
-        if let idx = organizations.firstIndex(where: { $0.id == org.id }) { organizations[idx] = org }
-        if currentOrganization?.id == org.id { currentOrganization = org }
+        refresh()
     }
 
     func reloadPrograms() async {
-        do {
-            programs = try await service.fetchPrograms()
-        } catch {
-            loadError = error.localizedDescription
-        }
+        programs = (try? await ProspectService.current.fetchPrograms()) ?? programs
     }
 
-    func signOut() async {
-        await AuthService.shared.logout()
-        resetToSignedOut()
+    /// An agent joins another event with a new invitation while already set up.
+    func join(_ invitation: Invitation) throws {
+        try exchange.join(invitation)
+        pendingInvitation = nil
+        refresh()
+        EndReminder.schedule(for: invitation)
     }
 
-    private func enter(_ org: Organization) async {
-        ProspectService.shared.organizationId = org.id
-        currentOrganization = org
-        defaults.set(org.id.uuidString, forKey: Self.lastOrganizationKey)
-        programs = (try? await service.fetchPrograms()) ?? []
-        phase = .ready
-    }
+    // MARK: - Reset
 
-    private func resetToSignedOut() {
+    /// Wipes this phone: identity, events, prospects and keys. Used by "Réinitialiser cet appareil".
+    func resetDevice() {
+        let ids = store.read { $0.events.map(\.id) }
+        ids.forEach { exchange.keys.remove(for: $0) }
+        EndReminder.cancelAll()
         LiveActivityManager.shared.end()
-        ProspectService.shared.organizationId = nil
-        organizations = []
-        currentOrganization = nil
-        programs = []
-        previewRole = nil
-        email = nil
-        userId = nil
-        participantEvent = nil
-        phase = .signedOut
+        store.reset()
+        selectedTab = .prospects
+        refresh()
+        epoch += 1
     }
 
-    // MARK: - Demo backend
+    // MARK: - Incoming links and files
 
-    /// Swaps the whole app onto an offline demo backend (or back to the live API with `nil`)
-    /// and restarts from the state that backend describes.
-    func useDemo(_ demo: DemoProspectService?, loginIntent: LoginIntent? = nil) async {
-        DemoMode.active = demo
-        ProspectService.override = demo
-        resetToSignedOut()
-        self.loginIntent = loginIntent
-        selectedTab = .prospects
-        epoch += 1
-        #if DEBUG
-        DebugOverlay.shared.refreshBadge()
-        #endif
-        if AuthService.shared.isSignedIn {
-            phase = .loading
-            await bootstrap()
+    /// `prospect://join?i=…` (an invitation) or a `.prospects` file (an agent's end-of-day file).
+    func handleIncoming(_ url: URL) {
+        if let invitation = Invitation(url: url) {
+            if phase == .ready, role == .agent {
+                do {
+                    try join(invitation)
+                    importMessage = "Rejoint : \(invitation.name)"
+                    epoch += 1
+                } catch { importMessage = error.localizedDescription }
+            } else if phase == .ready {
+                importMessage = "Cette invitation s'ouvre sur le téléphone d'un agent."
+            } else {
+                pendingInvitation = invitation
+                onboardingIntent = .join
+            }
+            return
+        }
+        guard url.pathExtension == Handover.fileExtension else { return }
+        guard phase == .ready, isAdmin else {
+            importMessage = "Seul l'organisateur peut importer un envoi."
+            return
+        }
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        do {
+            let outcome = try exchange.importHandover(try Data(contentsOf: url))
+            importMessage = Self.message(for: outcome)
+            epoch += 1
+        } catch {
+            importMessage = error.localizedDescription
         }
     }
 
-    // MARK: - Previews
+    static func message(for outcome: ImportOutcome) -> String {
+        let m = outcome.merge
+        if m.added == 0 && m.updated == 0 { return "\(outcome.agentName) : rien de nouveau (déjà importé)." }
+        return "\(outcome.agentName) : \(m.added) ajouté\(m.added > 1 ? "s" : "")" + (m.updated > 0 ? ", \(m.updated) mis à jour" : "")
+    }
 
-    /// Preview-only state backed by seeded demo data; never touches the network or the Keychain.
-    static func preview(nom: String = "Camille Martin", role: Role = .admin, eventLabel: String = "Salon") -> AppState {
-        let identity: DemoProspectService.Identity = role == .admin ? .admin(name: nom) : .participant(role: role, name: nom)
-        let demo = DemoProspectService(.init(identity: identity, eventLabel: eventLabel))
-        let s = AppState(service: demo)
-        let org = Organization(id: DemoProspectService.orgId, name: "Atelier Horizon", eventLabel: eventLabel, role: role, displayName: nom, programIds: [], adminCode: role == .admin ? "K7M2QX" : nil)
-        s.organizations = [org]
-        s.currentOrganization = org
-        s.programs = demo.previewPrograms
-        s.phase = .ready
-        return s
+    // MARK: - Demo store (debug)
+
+    /// Swaps the whole app onto another store (demo data) and restarts from the state it describes.
+    func useStore(_ store: LocalStore, keys: KeyVault, service: ProspectServiceProtocol?, onboardingIntent: OnboardingIntent? = nil) {
+        self.store = store
+        self.exchange = EventExchange(store: store, keys: keys)
+        EventExchange.override = self.exchange
+        ProspectService.override = service
+        self.onboardingIntent = onboardingIntent
+        selectedTab = .prospects
+        refresh()
+        epoch += 1
     }
 }

@@ -21,79 +21,58 @@ extension View {
 
 // MARK: - Scenarios
 
-/// A named user state. Each one boots the app on an offline demo backend in that state.
+/// A named phone state. Each one starts the app on in-memory demo data: nothing touches the real store.
 enum DebugScenario: String, CaseIterable, Identifiable {
-    case signedOutJoin, signedOutAdmin, signedOutCreateAccount
-    case adminNewAccount, adminEmptyOrg, adminFull
-    case agent, conseiller
+    case fresh, freshOrganize, freshJoin, organizerEmpty, organizerFull, agentFull
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .signedOutJoin:          return "Déconnecté · Rejoindre"
-        case .signedOutAdmin:         return "Déconnecté · Administrateur"
-        case .signedOutCreateAccount: return "Déconnecté · Créer un compte"
-        case .adminNewAccount:        return "Admin · compte neuf"
-        case .adminEmptyOrg:          return "Admin · organisation vide"
-        case .adminFull:              return "Admin · organisation active"
-        case .agent:                  return "Agent · événement en cours"
-        case .conseiller:             return "Conseiller · événement en cours"
+        case .fresh:          return "Premier lancement"
+        case .freshOrganize:  return "Premier lancement · Organiser"
+        case .freshJoin:      return "Premier lancement · Rejoindre"
+        case .organizerEmpty: return "Organisateur · aucun événement"
+        case .organizerFull:  return "Organisateur · événement en cours"
+        case .agentFull:      return "Agent · événement en cours"
         }
     }
 
     var subtitle: String {
         switch self {
-        case .signedOutJoin:          return "Écran de connexion, onglet code. Essayez XXXXXX (invalide) ou C-… (conseiller)"
-        case .signedOutAdmin:         return "Connexion email + mot de passe (tout est accepté)"
-        case .signedOutCreateAccount: return "Création de compte → onboarding organisation"
-        case .adminNewAccount:        return "Connecté, aucune organisation : onboarding"
-        case .adminEmptyOrg:          return "Organisation créée, sans programme ni événement"
-        case .adminFull:              return "3 événements, 18 prospects, 5 programmes, équipe"
-        case .agent:                  return "Rejoint avec un code agent, peut saisir"
-        case .conseiller:             return "Rejoint avec un code conseiller, lecture seule"
+        case .fresh:          return "Écran de choix, aucune donnée"
+        case .freshOrganize:  return "Formulaire d'organisateur"
+        case .freshJoin:      return "Scanner ou coller une invitation"
+        case .organizerEmpty: return "Identité créée, sans programme ni événement"
+        case .organizerFull:  return "3 événements, 18 prospects, 5 programmes, 1 envoi reçu"
+        case .agentFull:      return "Événement rejoint, 6 prospects à envoyer"
         }
     }
 
     var icon: String {
         switch self {
-        case .signedOutJoin:          return "number.square"
-        case .signedOutAdmin:         return "person.badge.key"
-        case .signedOutCreateAccount: return "person.crop.circle.badge.plus"
-        case .adminNewAccount:        return "sparkles"
-        case .adminEmptyOrg:          return "tray"
-        case .adminFull:              return "chart.bar.doc.horizontal"
-        case .agent:                  return "person.fill.checkmark"
-        case .conseiller:             return "eye"
+        case .fresh, .freshOrganize, .freshJoin: return "sparkles"
+        case .organizerEmpty:                    return "tray"
+        case .organizerFull:                     return "tray.and.arrow.down"
+        case .agentFull:                         return "paperplane"
         }
     }
 
-    var intent: AppState.LoginIntent? {
+    var kind: DemoSeed.Kind {
         switch self {
-        case .signedOutJoin:          return .join
-        case .signedOutAdmin:         return .admin
-        case .signedOutCreateAccount: return .createAccount
-        default:                      return nil
+        case .fresh, .freshOrganize, .freshJoin: return .fresh
+        case .organizerEmpty:                    return .organizerEmpty
+        case .organizerFull:                     return .organizerFull
+        case .agentFull:                         return .agentFull
         }
     }
 
-    func setup(eventLabel: String) -> DemoProspectService.Setup {
-        var s = DemoProspectService.Setup(eventLabel: eventLabel)
+    var intent: AppState.OnboardingIntent? {
         switch self {
-        case .signedOutJoin, .signedOutAdmin, .signedOutCreateAccount:
-            s.signedIn = false
-        case .adminNewAccount:
-            s.hasOrganization = false
-        case .adminEmptyOrg:
-            s.populated = false
-        case .adminFull:
-            break
-        case .agent:
-            s.identity = .participant(role: .agent, name: "Hugo Petit")
-        case .conseiller:
-            s.identity = .participant(role: .conseillerFormation, name: "Julien Morel")
+        case .freshOrganize: return .organize
+        case .freshJoin:     return .join
+        default:             return nil
         }
-        return s
     }
 }
 
@@ -103,8 +82,7 @@ enum DebugScenario: String, CaseIterable, Identifiable {
 enum DebugLaunch {
     static let scenarioKey = "debug.scenario"
     static let autoLaunchKey = "debug.autoLaunch"
-    static let eventLabelKey = "debug.eventLabel"
-    nonisolated(unsafe) static var intent: AppState.LoginIntent?
+    nonisolated(unsafe) static var active: DebugScenario?
 
     static func requested() -> DebugScenario? {
         let args = ProcessInfo.processInfo.arguments
@@ -119,14 +97,32 @@ enum DebugLaunch {
         return nil
     }
 
-    static func prepare() {
+    @MainActor
+    static func apply(to state: AppState) {
         guard let scenario = requested() else { return }
-        let label = UserDefaults.standard.string(forKey: eventLabelKey) ?? "Salon"
-        let demo = DemoProspectService(scenario.setup(eventLabel: label))
-        DemoMode.active = demo
-        ProspectService.override = demo
-        intent = scenario.intent
+        start(scenario, on: state)
+    }
+
+    @MainActor
+    static func start(_ scenario: DebugScenario, on state: AppState) {
+        let seeded = DemoSeed.make(scenario.kind)
+        state.useStore(seeded.store, keys: seeded.keys, service: seeded.service, onboardingIntent: scenario.intent)
+        active = scenario
         UserDefaults.standard.set(scenario.rawValue, forKey: scenarioKey)
+    }
+}
+
+extension DebugLaunch {
+    /// Imports a file as if the agent Sofia Rossi had sent it to this organizer. Returns the toast text.
+    @MainActor
+    static func simulateHandover(on appState: AppState) throws -> String {
+        let events = appState.store.read { $0.events }
+        guard let event = events.first(where: { $0.isOrganizer && $0.status == .enCours }) ?? events.first(where: \.isOrganizer) else {
+            throw ExchangeError.unknownEvent
+        }
+        let outcome = try appState.exchange.importHandover(try DemoSeed.simulatedHandover(for: event))
+        appState.epoch += 1
+        return AppState.message(for: outcome)
     }
 }
 
@@ -152,16 +148,23 @@ struct DebugMenuModifier: ViewModifier {
             // every screen, including login, onboarding and over sheets. Installed once.
             .onAppear { DebugOverlay.shared.install(appState: appState) }
             .task {
-                // `-debugRoute <newProspect|editProspect|filters|events|newEvent|eventAccess|profile>`
+                // `-debugRoute <newProspect|editProspect|filters|events|newEvent|invitation|profile>`
                 // opens that screen after launch.
                 let args = ProcessInfo.processInfo.arguments
                 if let i = args.firstIndex(of: "-debugRoute"), args.indices.contains(i + 1) {
                     let routes: [String: AppState.Route] = [
                         "newProspect": .newProspect, "editProspect": .editProspect, "filters": .filters,
-                        "events": .events, "newEvent": .newEvent, "eventAccess": .eventAccess, "profile": .profile,
+                        "events": .events, "newEvent": .newEvent, "invitation": .invitation, "profile": .profile,
                     ]
                     try? await Task.sleep(for: .milliseconds(1500))
                     appState.route = routes[args[i + 1]]
+                }
+            }
+            .task {
+                // `-debugSimulateHandover` imports a fake agent file at launch (screenshots).
+                if ProcessInfo.processInfo.arguments.contains("-debugSimulateHandover") {
+                    try? await Task.sleep(for: .milliseconds(700))
+                    _ = try? DebugLaunch.simulateHandover(on: appState)
                 }
             }
             .task {
@@ -186,20 +189,16 @@ struct DebugMenuView: View {
 
     @AppStorage(DebugLaunch.scenarioKey) private var lastScenario = ""
     @AppStorage(DebugLaunch.autoLaunchKey) private var autoLaunch = false
-    @AppStorage(DebugLaunch.eventLabelKey) private var eventLabel = "Salon"
     @State private var toast: Toast?
 
-    private static let labels = ["Salon", "JPO", "Événement", "Forum"]
-
-    private var isDemo: Bool { DemoMode.active != nil }
+    private var isDemo: Bool { DebugLaunch.active != nil }
 
     var body: some View {
         NavigationStack {
             List {
                 modeSection
                 scenariosSection
-                if appState.phase == .ready { navigationSection; screensSection }
-                demoDataSection
+                if appState.phase == .ready { navigationSection; screensSection; exchangeSection }
                 toolsSection
                 infoSection
             }
@@ -220,21 +219,22 @@ struct DebugMenuView: View {
     private var modeSection: some View {
         Section {
             HStack(spacing: 12) {
-                Image(systemName: isDemo ? "testtube.2" : "bolt.horizontal.fill")
+                Image(systemName: isDemo ? "testtube.2" : "iphone")
                     .foregroundStyle(isDemo ? Color.warning : Color.success)
                     .frame(width: 28)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(isDemo ? "Mode démo (hors ligne)" : "API réelle")
-                        .font(.textHeadline)
-                    Text(isDemo ? (DebugScenario(rawValue: lastScenario)?.title ?? "Données d'exemple") : APIClient.shared.baseURL.absoluteString)
-                        .font(.textCaption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    Text(isDemo ? "Mode démo (mémoire)" : "Données réelles de ce téléphone").font(.textHeadline)
+                    Text(isDemo ? (DebugLaunch.active?.title ?? "Données d'exemple") : "Stockage local chiffré")
+                        .font(.textCaption).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             if isDemo {
-                Button("Revenir à l'API réelle") {
-                    Task { await appState.useDemo(nil); dismiss() }
+                Button("Revenir aux données réelles") {
+                    DebugLaunch.active = nil
+                    UserDefaults.standard.removeObject(forKey: DebugLaunch.scenarioKey)
+                    appState.useStore(.shared, keys: KeychainKeyVault(), service: nil)
+                    EventExchange.override = nil
+                    dismiss()
                 }
             }
         } header: { Text("Mode") }
@@ -245,12 +245,15 @@ struct DebugMenuView: View {
         Section {
             ForEach(DebugScenario.allCases) { scenario in
                 Button {
-                    Task { await apply(scenario) }
+                    lastScenario = scenario.rawValue
+                    dismiss()
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(250))
+                        DebugLaunch.start(scenario, on: appState)
+                    }
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: scenario.icon)
-                            .foregroundStyle(Color.accent)
-                            .frame(width: 28)
+                        Image(systemName: scenario.icon).foregroundStyle(Color.accent).frame(width: 28)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(scenario.title).font(.textSub.weight(.semibold)).foregroundStyle(Color.inkPrimary)
                             Text(scenario.subtitle).font(.textCaption).foregroundStyle(Color.inkSecondary).multilineTextAlignment(.leading)
@@ -262,8 +265,8 @@ struct DebugMenuView: View {
                     }
                 }
             }
-        } header: { Text("États utilisateur") } footer: {
-            Text("Chaque état démarre l'app sur des données d'exemple modifiables. Rien n'est envoyé au serveur.")
+        } header: { Text("États du téléphone") } footer: {
+            Text("Chaque état démarre l'app sur des données d'exemple en mémoire. Les vraies données ne sont pas touchées.")
         }
         .listRowBackground(Color.surfaceCard)
     }
@@ -272,9 +275,9 @@ struct DebugMenuView: View {
         Section("Aller à") {
             ForEach([
                 ("Prospects", "person.2", AppState.MainTab.prospects),
-                ("Tableau de bord", "chart.bar.fill", .dashboard),
+                ("Statistiques", "chart.bar.fill", .dashboard),
                 ("Archive", "archivebox", .archive),
-                ("Équipe", "building.2", .team),
+                (appState.isAdmin ? "Collecte" : "Envoi", "tray.and.arrow.down", .exchange),
             ], id: \.0) { title, icon, tab in
                 Button {
                     appState.selectedTab = tab
@@ -282,21 +285,20 @@ struct DebugMenuView: View {
                 } label: {
                     Label(title, systemImage: icon).foregroundStyle(Color.inkPrimary)
                 }
-                .disabled(tab == .team && !appState.isAdmin)
             }
         }
         .listRowBackground(Color.surfaceCard)
     }
 
     private var screensSection: some View {
-        Section {
+        Section("Écrans") {
             ForEach([
                 ("Ajouter un prospect", "person.crop.circle.badge.plus", AppState.Route.newProspect),
                 ("Modifier un prospect", "pencil", .editProspect),
                 ("Filtres", "line.3.horizontal.decrease.circle", .filters),
                 ("Choisir un événement", "calendar", .events),
                 ("Créer un événement", "calendar.badge.plus", .newEvent),
-                ("Codes d'accès", "qrcode", .eventAccess),
+                ("Invitation (QR)", "qrcode", .invitation),
                 ("Profil", "person.crop.circle", .profile),
             ], id: \.0) { title, icon, route in
                 Button {
@@ -309,37 +311,39 @@ struct DebugMenuView: View {
                 } label: {
                     Label(title, systemImage: icon).foregroundStyle(Color.inkPrimary)
                 }
-                .disabled(route == .newProspect && !appState.canEditProspects)
             }
-        } header: { Text("Écrans") } footer: {
-            Text("Ouvre l'écran dans l'état utilisateur courant. Certains écrans sont réservés aux admins.")
         }
         .listRowBackground(Color.surfaceCard)
     }
 
-    private var demoDataSection: some View {
-        Section {
-            Picker("Nom des événements", selection: $eventLabel) {
-                ForEach(Self.labels, id: \.self) { Text($0).tag($0) }
+    /// Lets one phone test the whole handover: simulate an agent sending their file to this organizer.
+    @ViewBuilder
+    private var exchangeSection: some View {
+        if appState.isAdmin {
+            Section {
+                Button {
+                    simulateHandover()
+                } label: {
+                    Label("Simuler l'envoi d'un agent", systemImage: "tray.and.arrow.down").foregroundStyle(Color.inkPrimary)
+                }
+            } header: { Text("Collecte") } footer: {
+                Text("Crée un fichier chiffré à la clé de l'événement affiché dans l'onglet Collecte, avec 2 prospects déjà connus (doublons) et 3 nouveaux, puis l'importe.")
             }
-            Toggle("Relancer dans le dernier état", isOn: $autoLaunch)
-        } header: { Text("Données de démo") } footer: {
-            Text("Le nom des événements s'applique au prochain état choisi.")
+            .listRowBackground(Color.surfaceCard)
         }
-        .listRowBackground(Color.surfaceCard)
     }
 
     private var toolsSection: some View {
         Section("Outils") {
-            Button { toast = Toast(message: "Prospect enregistré", style: .success) } label: { Label("Toast · succès", systemImage: "checkmark.circle") }
-            Button { toast = Toast(message: "Connexion impossible", style: .error) } label: { Label("Toast · erreur", systemImage: "exclamationmark.triangle") }
-            Button { toast = Toast(message: "Code copié", style: .info) } label: { Label("Toast · info", systemImage: "info.circle") }
+            Button { toast = Toast(message: "Prospect ajouté", style: .success) } label: { Label("Toast · succès", systemImage: "checkmark.circle") }
+            Button { toast = Toast(message: "Envoi impossible", style: .error) } label: { Label("Toast · erreur", systemImage: "exclamationmark.triangle") }
+            Button { toast = Toast(message: "Lien copié", style: .info) } label: { Label("Toast · info", systemImage: "info.circle") }
             Button { Haptics.success() } label: { Label("Haptique · succès", systemImage: "iphone.radiowaves.left.and.right") }
-            Button { Haptics.error() } label: { Label("Haptique · erreur", systemImage: "iphone.radiowaves.left.and.right") }
+            Toggle("Relancer dans le dernier état", isOn: $autoLaunch)
             Button(role: .destructive) {
-                AuthService.shared.clearSession()
-                Task { await appState.useDemo(nil); dismiss() }
-            } label: { Label("Effacer la session (Keychain)", systemImage: "key.slash") }
+                appState.resetDevice()
+                dismiss()
+            } label: { Label("Réinitialiser cet appareil", systemImage: "trash") }
         }
         .foregroundStyle(Color.inkPrimary)
         .listRowBackground(Color.surfaceCard)
@@ -347,9 +351,8 @@ struct DebugMenuView: View {
 
     private var infoSection: some View {
         Section("Infos") {
-            LabeledContent("API", value: APIClient.shared.baseURL.absoluteString)
             LabeledContent("Phase", value: String(describing: appState.phase))
-            LabeledContent("Rôle", value: appState.currentOrganization.map { $0.role.label } ?? "—")
+            LabeledContent("Rôle", value: appState.currentOrganization.map { $0.role == .admin ? "Organisateur" : "Agent" } ?? "—")
             LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")
         }
         .font(.textCaption)
@@ -358,12 +361,12 @@ struct DebugMenuView: View {
 
     // MARK: Actions
 
-    private func apply(_ scenario: DebugScenario) async {
-        lastScenario = scenario.rawValue
-        let demo = DemoProspectService(scenario.setup(eventLabel: eventLabel))
-        dismiss()
-        try? await Task.sleep(for: .milliseconds(250))
-        await appState.useDemo(demo, loginIntent: scenario.intent)
+    private func simulateHandover() {
+        do {
+            toast = Toast(message: try DebugLaunch.simulateHandover(on: appState), style: .success)
+        } catch {
+            toast = Toast(message: error.localizedDescription, style: .error)
+        }
     }
 }
 

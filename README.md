@@ -1,67 +1,41 @@
 # Prospect
 
-Prospect is an iPhone app for teams that collect prospects at events: open days, fairs, forums. Several people register visitors live on their own phones. Admins follow the numbers on a shared dashboard and export them as CSV.
+Prospect is an iPhone app for teams that collect prospects at events: open days, fairs, forums. Each person records visitors on their own phone. **Nothing is sent to a server**: the data stays on the phones of the team, and the organizer collects it at the end of the event.
 
 ```
-api/   Backend: TypeScript + Hono, deployed on Vercel, Postgres on Neon
 ios/   iPhone app: SwiftUI, iOS 18+, Live Activity extension
 ```
 
-## How access works
+The previous hosted version (accounts, a Hono API on Vercel, Postgres on Neon) lives on the `hosted` branch.
 
-| Who | Signs in with | Can |
-|---|---|---|
-| **Admin** | Email + password (no verification email) | Create organizations, programs and events; see every event; manage codes and people |
-| **Agent** | The event's **agent code** + their name | Add, edit and archive prospects of **that event only** |
-| **Conseiller** | The event's **conseiller code** + their name | Read prospects and the dashboard of **that event only** |
+## How it works
 
-1. An admin creates an account and an **organization**. They choose what their events are called ("JPO", "Salon"…) and list the **programs** prospects can be interested in.
-2. They create an **event**. It comes with two 6-character codes, under Prospects → ⋯ → *Codes d'accès*.
-3. They share a code. People open the app, choose **Rejoindre**, and type the code and their name. No account, no email.
-4. Admins can regenerate a code (people who already joined stay in) and remove people (they lose access right away). Codes stop working once the event is archived.
-5. Co-admins join an organization with its **admin code** (Équipe tab).
+1. **Organizer** opens the app, chooses *Organiser un événement*, gives their name and creates an event (name, date, optional end time, programs).
+2. The **Collecte** tab shows an **invitation**: a QR code and a share link. Agents scan it with Prospect (*Rejoindre un événement*), enter their name, and the event appears on their phone. No account.
+3. During the event everybody records prospects on their own phone, and sees only their own list.
+4. At the end, each agent opens the **Envoi** tab and taps *Envoyer*: the app builds a **file encrypted for the organizer** and opens the share sheet (AirDrop, Messages, Mail…). Phones remind agents at the event's end time.
+5. The organizer opens the file in Prospect (or taps *Importer un envoi*). Prospects are merged without duplicates, possible duplicates (same email or phone) are flagged, and the dashboard and CSV export cover the whole event.
 
-The app checks for new prospects every 5 seconds while a list is open. There is no realtime push.
+### Privacy
 
-## Backend (`api/`)
+- The event's **private key never leaves the organizer's phone** (Keychain). Agents hold only the public key, from the invitation.
+- A handover file is encrypted with an ephemeral key per file (Curve25519 key agreement, HKDF-SHA256, AES-256-GCM). It can travel through any channel; only the organizer's phone can open it, and a tampered file is rejected.
+- The local store is a JSON file with complete file protection (readable only while the phone is unlocked). There is no analytics, no account, no network code.
+- "Réinitialiser cet appareil" (Profil) wipes everything, including keys.
 
-- `src/index.ts`: the Hono app. Vercel deploys it as-is, with no config file.
-- `src/routes/`: `auth` (signup, login, join, refresh), `me`, `orgs` (organizations, admins, programs), `events` (events, codes, participants, prospects, stats).
-- `db/migrations/*.sql`: the schema. `npm run migrate` applies the files that haven't run yet.
-- Security: every query is scoped to the caller's organization, and participants also to their event. Passwords are hashed with scrypt. Access tokens last 1 hour. Refresh tokens rotate on every use, and reusing an old one revokes every session of that account. Failed logins and code guesses are rate-limited.
+### Limits to know
 
-### Run it locally (no database to install)
+- Agents see only their own prospects until the organizer has imported their file: there is no live view.
+- A lost or broken phone loses what it recorded and had not yet sent. A mid-day send limits that.
+- The organizer's key is stored only on their phone (this device only, not synced). If that phone is lost, received handovers can no longer be opened.
+- iOS only.
 
-```bash
-cd api
-npm install
-npm run dev:local     # http://localhost:3000, embedded Postgres stored in api/.pglite
-```
-
-```bash
-npm test              # 17 end-to-end API tests against a real Postgres engine (PGlite)
-npm run typecheck
-```
-
-### Deploy to Vercel + Neon
-
-1. **Vercel → Add New → Project**, import this GitHub repo, and set **Root Directory** to `api`. Vercel detects Hono by itself.
-2. In the project, **Storage → Create Database → Neon (Postgres)** and connect it. This sets `DATABASE_URL`.
-3. **Settings → Environment Variables**: add `JWT_SECRET` (generate it with `openssl rand -base64 48`).
-4. Create the tables once, from your machine, using the Neon connection string:
-   ```bash
-   cd api && DATABASE_URL="postgres://…" npm run migrate
-   ```
-5. Redeploy. `https://<your-project>.vercel.app/` answers `{"name":"prospect-api","ok":true}`.
-
-Every push to `main` redeploys the API. When you add a migration, run `npm run migrate` against Neon again.
-
-## iPhone app (`ios/`)
+## The iPhone app (`ios/`)
 
 The Xcode project is generated from `ios/project.yml` with [XcodeGen](https://github.com/yonaskolb/XcodeGen). Source folders are synced, so files added in Xcode are picked up without regenerating.
 
-- **API address:** set `API_BASE_URL` in `ios/project.yml`, then run `cd ios && xcodegen`. To use the local API instead, build with `API_BASE_URL=http://localhost:3000`.
-- **Unit tests:** `xcodebuild test -project ios/Prospect.xcodeproj -scheme Prospect -destination 'platform=iOS Simulator,name=iPhone 18 Pro Max'`.
-- **End-to-end UI test** (opt-in, against the local API only): see the header of `ios/ProspectUITests/ProspectFlowUITests.swift`.
+- **Run:** `cd ios && xcodegen && open Prospect.xcodeproj`.
+- **Unit tests:** `xcodebuild test -project ios/Prospect.xcodeproj -scheme Prospect -destination 'platform=iOS Simulator,name=iPhone 18 Pro Max' -only-testing:ProspectTests`.
+- **Debug builds** have a floating bug button with demo states (first launch, organizer, agent) and a *Simuler l'envoi d'un agent* action, so the whole handover can be tried on one phone. Launch arguments: `-debugScenario <fresh|freshOrganize|freshJoin|organizerEmpty|organizerFull|agentFull>`, `-debugRoute <newProspect|editProspect|filters|events|newEvent|invitation|profile>`.
 
-Structure: `Services/` (API client, auth, data service) → `ViewModels/` (`@Observable`, injectable service) → `Views/`. Colors live in `Color+Tokens.swift` and fonts (Geist) in `Font+Geist.swift`. The app is dark-mode only.
+Structure: `Local/` (store, key vault, invitation, encrypted handover, merge) → `Services/` (`ProspectService` answers from the store) → `ViewModels/` (`@Observable`) → `Views/`. Colors live in `Color+Tokens.swift`; the design system in `Views/DesignSystem/`. The app is dark-mode only.

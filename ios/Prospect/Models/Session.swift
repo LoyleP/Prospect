@@ -30,6 +30,8 @@ struct Session: Identifiable, Equatable, Hashable, Sendable {
     /// Target prospect count per program, keyed by program id.
     var programObjectives: [UUID: Int]
     let createdAt: String
+    /// When agents are reminded to send their prospects to the organizer.
+    var endsAt: Date? = nil
 
     var displayDate: Date? { isoDayFormatter.date(from: date) }
 
@@ -128,9 +130,10 @@ struct SessionPatch: Encodable, Sendable {
     var rdvTargetLow: Int?
     var rdvTargetHigh: Int?
     var programObjectives: [String: Int]?
+    var endsAt: Date?
 
     enum CodingKeys: String, CodingKey {
-        case name, date, status
+        case name, date, status, endsAt
         case isArchived        = "is_archived"
         case preRegistered     = "pre_registered"
         case rdvTargetLow      = "rdv_target_low"

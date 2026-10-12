@@ -42,7 +42,7 @@ struct DashboardView: View {
                         detailsToggle
                         if showDetails {
                             arrivals
-                            if appState.isAdminOrCF && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty { attendance }
+                            if appState.isAdmin && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty { attendance }
                             if appState.isAdmin { closing }
                             members
                         }
@@ -585,7 +585,7 @@ private struct DashboardFilterSheet: View {
     }
 }
 
-#Preview("Dashboard — Admin") {
+#Preview("Dashboard — Organisateur") {
     NavigationStack { DashboardView() }
-        .environment(AppState.preview(role: .admin))
+        .environment(AppState.preview(.organizerFull))
 }

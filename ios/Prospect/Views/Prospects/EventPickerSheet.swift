@@ -116,7 +116,7 @@ struct EventPickerSheet: View {
 
             if isAdmin {
                 Menu {
-                    Button { dismiss(); onAccess(summary) } label: { Label("Codes d'accès", systemImage: "qrcode") }
+                    Button { dismiss(); onAccess(summary) } label: { Label("Inviter", systemImage: "qrcode") }
                     Button { dismiss(); onObjectives(summary) } label: { Label("Objectifs", systemImage: "target") }
                     Button { dismiss(); onEdit(summary) } label: { Label("Modifier", systemImage: "pencil") }
                     Button { onToggleArchive(summary) } label: {

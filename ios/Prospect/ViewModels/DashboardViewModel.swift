@@ -43,8 +43,6 @@ final class DashboardViewModel {
     var archivedSessions: [SessionSummary] = []
     var selectedSession: SessionSummary?
     var prospects: [Prospect]              = []
-    /// Conseillers of the selected event (admins only), for the closing stats.
-    var cfParticipants: [Participant]      = []
     /// The organization's programs, provided by the view (for ordering and names).
     var programs: [Program]                = []
     var isLoading = false
@@ -141,18 +139,8 @@ final class DashboardViewModel {
     }
 
     var closing: [ClosingCount] {
-        let singleProgram: UUID? = filterPrograms.count == 1 ? filterPrograms.first : nil
-        return cfParticipants.flatMap { cf in
-            cf.programIds
-                .filter { singleProgram == nil || $0 == singleProgram }
-                .map { programId in
-                    let inSection    = filteredProspects.filter { $0.programId == programId }
-                    let rdvInfo      = inSection.filter { $0.statut == Statut.rdvInfo.rawValue }.count
-                    let rdvAdmission = inSection.filter { $0.statut == Statut.rdvAdmission.rawValue }.count
-                    return ClosingCount(cfNom: cf.displayName, programId: programId, rdvInfo: rdvInfo, rdvAdmission: rdvAdmission)
-                }
-        }
-        .sorted { $0.total > $1.total }
+        // Per-conseiller closing stats needed a server-side list of conseillers; not available offline.
+        []
     }
 
     /// Closing stats grouped by program, in the organization's program order.
@@ -193,10 +181,6 @@ final class DashboardViewModel {
         defer { isLoading = false }
         do {
             prospects = try await service.fetchProspects(sessionId: summary.id)
-            // Join codes are only sent to admins; only they can list participants.
-            cfParticipants = summary.agentCode == nil ? [] :
-                ((try? await service.fetchParticipants(sessionId: summary.id)) ?? [])
-                    .filter { $0.role == .conseillerFormation }
             lastUpdatedAt = Date()
         } catch {
             errorMessage = "Impossible de charger les données : \(error.localizedDescription)"

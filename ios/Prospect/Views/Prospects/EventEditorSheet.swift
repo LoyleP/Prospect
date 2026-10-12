@@ -10,6 +10,7 @@ struct EventEditorSheet: View {
     @Binding var name: String
     @Binding var date: Date
     @Binding var status: SessionStatut
+    @Binding var endsAt: Date?
     let canSave: Bool
     let isSaving: Bool
     let onSave: () -> Void
@@ -47,6 +48,26 @@ struct EventEditorSheet: View {
                             .card(padding: Space.s)
                     }
 
+                    VStack(alignment: .leading, spacing: Space.m) {
+                        Toggle(isOn: Binding(
+                            get: { endsAt != nil },
+                            set: { endsAt = $0 ? Self.merge(time: Self.defaultEnd(on: date), into: date) : nil }
+                        )) {
+                            Text("Rappeler d'envoyer les prospects").font(.textBody).foregroundStyle(Color.inkPrimary)
+                        }
+                        .tint(Color.accent)
+                        if let end = endsAt {
+                            DatePicker("Heure de fin", selection: Binding(
+                                get: { end },
+                                set: { endsAt = Self.merge(time: $0, into: date) }
+                            ), displayedComponents: .hourAndMinute)
+                            .environment(\.locale, Locale(identifier: "fr_FR"))
+                            .tint(Color.accent)
+                        }
+                    }
+                    .padding(Space.l)
+                    .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+
                     if mode == .edit {
                         VStack(alignment: .leading, spacing: Space.m) {
                             Text("Statut")
@@ -54,7 +75,7 @@ struct EventEditorSheet: View {
                                 .foregroundStyle(Color.inkSecondary)
                                 .tracking(0.6)
                             UnderlineTabs(options: SessionStatut.allCases, selection: $status) { $0.label }
-                            Text("Seuls les événements « En cours » permettent d'enregistrer des prospects.")
+                            Text("Un événement terminé n'accepte plus de prospects.")
                                 .font(.textFootnote)
                                 .foregroundStyle(Color.inkTertiary)
                         }
@@ -70,7 +91,7 @@ struct EventEditorSheet: View {
             Button(action: onSave) {
                 ZStack {
                     Text(mode == .create ? "Créer" : "Enregistrer").opacity(isSaving ? 0 : 1)
-                    if isSaving { ProgressView().tint(Color.onInk) }
+                    if isSaving { ProgressView().tint(Color.onAccent) }
                 }
             }
             .buttonStyle(.primary)
@@ -96,5 +117,16 @@ struct EventEditorSheet: View {
         }
         .presentationDragIndicator(.visible)
         .onAppear { if mode == .create { nameFocused = true } }
+    }
+
+    /// The date's day with another date's hour and minute.
+    private static func merge(time: Date, into day: Date) -> Date {
+        let cal = Calendar.current
+        let t = cal.dateComponents([.hour, .minute], from: time)
+        return cal.date(bySettingHour: t.hour ?? 17, minute: t.minute ?? 0, second: 0, of: day) ?? day
+    }
+
+    private static func defaultEnd(on day: Date) -> Date {
+        Calendar.current.date(bySettingHour: 17, minute: 0, second: 0, of: day) ?? day
     }
 }

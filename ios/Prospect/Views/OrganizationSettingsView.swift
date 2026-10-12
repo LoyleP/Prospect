@@ -1,13 +1,12 @@
 // Views/OrganizationSettingsView.swift
-// Admin-only: the organization's name, what its events are called, and its programs.
+// Organizer only: what events are called, and the list of programs shared in every invitation.
 import SwiftUI
 
 struct OrganizationSettingsView: View {
     @Environment(AppState.self) private var appState
 
-    private enum Field { case name, label }
+    private enum Field { case label }
 
-    @State private var name = ""
     @State private var eventLabel = ""
     @State private var isSaving = false
     @State private var errorMessage: String?
@@ -21,21 +20,17 @@ struct OrganizationSettingsView: View {
 
     private var hasChanges: Bool {
         guard let org = appState.currentOrganization else { return false }
-        let n = name.trimmingCharacters(in: .whitespaces)
         let l = eventLabel.trimmingCharacters(in: .whitespaces)
-        return !n.isEmpty && !l.isEmpty && (n != org.name || l != org.eventLabel)
+        return !l.isEmpty && l != org.eventLabel
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                ScreenHeading(label: appState.currentOrganization?.name ?? "Organisation", title: "Réglages.")
+                ScreenHeading(label: appState.agentNom, title: "Réglages")
 
-                NumberedSection(number: "01", title: "Organisation") {
+                NumberedSection(number: "01", title: "Événements") {
                     VStack(spacing: Space.m) {
-                        LabeledField(title: "Nom", isFocused: focused == .name) {
-                            TextField("Nom", text: $name).focused($focused, equals: .name)
-                        }
                         LabeledField(title: "Vos événements s'appellent", isFocused: focused == .label) {
                             TextField("Événement, JPO, Salon…", text: $eventLabel).focused($focused, equals: .label)
                         }
@@ -45,7 +40,7 @@ struct OrganizationSettingsView: View {
                             } label: {
                                 ZStack {
                                     Text("Enregistrer").opacity(isSaving ? 0 : 1)
-                                    if isSaving { ProgressView().tint(Color.onInk) }
+                                    if isSaving { ProgressView().tint(Color.onAccent) }
                                 }
                             }
                             .buttonStyle(.primary)
@@ -110,7 +105,6 @@ struct OrganizationSettingsView: View {
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
-            name = appState.currentOrganization?.name ?? ""
             eventLabel = appState.eventLabel
         }
         .task { await appState.reloadPrograms() }
@@ -165,11 +159,7 @@ struct OrganizationSettingsView: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            let updated = try await service.updateOrganization(
-                name: name.trimmingCharacters(in: .whitespaces),
-                eventLabel: eventLabel.trimmingCharacters(in: .whitespaces)
-            )
-            appState.apply(updated)
+            appState.updateIdentity(eventLabel: eventLabel.trimmingCharacters(in: .whitespaces))
             toast = Toast(message: "Réglages enregistrés", style: .success)
         } catch {
             errorMessage = error.localizedDescription

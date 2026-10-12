@@ -37,46 +37,6 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertEqual(s.session.displayDate.map(Session.isoDay), "2026-11-14")
     }
 
-    func testDecodesAdminMe() throws {
-        let json = """
-        {"kind":"admin","user":{"id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee","email":"a@b.co","display_name":"Alice"},
-         "organizations":[{"id":"11111111-2222-4333-8444-555555555555","name":"Acme","event_label":"JPO","admin_code":"K7M2QX",
-           "created_at":"2026-10-01T09:00:00.000Z","role":"admin","display_name":"Alice","program_ids":[]}]}
-        """
-        guard case .admin(let user, let orgs) = try decoder.decode(MeResponse.self, from: Data(json.utf8)) else {
-            return XCTFail("expected admin")
-        }
-        XCTAssertEqual(user.displayName, "Alice")
-        XCTAssertEqual(orgs.first?.adminCode, "K7M2QX")
-        XCTAssertEqual(orgs.first?.eventLabel, "JPO")
-    }
-
-    func testDecodesParticipantMe() throws {
-        let json = """
-        {"kind":"participant","participant":{"id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee","display_name":"Hugo","role":"conseiller_formation"},
-         "organization":{"id":"11111111-2222-4333-8444-555555555555","name":"Acme","event_label":"Salon",
-           "created_at":"2026-10-01T09:00:00.000Z","role":"conseiller_formation","display_name":"Hugo","program_ids":[]},
-         "event":{"id":"22222222-2222-4333-8444-555555555555","name":"Salon","date":"2026-11-14","status":"en_cours",
-           "is_archived":false,"pre_registered":0,"rdv_target_low":0,"rdv_target_high":0,"program_objectives":{},
-           "created_at":"2026-10-01T09:00:00.000Z","prospect_count":0}}
-        """
-        guard case .participant(let me, let org, let event) = try decoder.decode(MeResponse.self, from: Data(json.utf8)) else {
-            return XCTFail("expected participant")
-        }
-        XCTAssertEqual(me.role, .conseillerFormation)
-        XCTAssertNil(org.adminCode)
-        XCTAssertNil(event.agentCode, "participants never receive join codes")
-    }
-
-    func testDecodesParticipant() throws {
-        let json = """
-        {"id":"aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee","display_name":"Bob","role":"agent",
-         "program_ids":[],"last_seen_at":null,"created_at":"2026-10-01T09:00:00.000Z"}
-        """
-        let p = try decoder.decode(Participant.self, from: Data(json.utf8))
-        XCTAssertEqual(p.role, .agent)
-    }
-
     func testProspectInputAlwaysSendsNullableFields() throws {
         let input = ProspectInput(prenom: "A", nom: "B", email: "a@b.co", telephone: "123456",
                                   programId: nil, niveauActuel: "Terminale", statut: "Curieux", notes: nil)
@@ -98,11 +58,6 @@ final class ModelDecodingTests: XCTestCase {
         XCTAssertNil(Color.rgbComponents(hex: "#XYZ"))
     }
 
-    func testAPIErrorMessages() {
-        XCTAssertEqual(APIError(status: 409, code: "last_admin", message: "").errorDescription,
-                       "Une organisation doit garder au moins un administrateur.")
-        XCTAssertEqual(APIError.network.errorDescription, "Erreur réseau — vérifiez votre connexion.")
-    }
 }
 
 import SwiftUI

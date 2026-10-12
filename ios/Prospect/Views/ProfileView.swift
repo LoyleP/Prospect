@@ -1,14 +1,18 @@
 // Views/ProfileView.swift
-// Who you are here: activity, the programs you follow (conseillers), your organizations,
-// and sign-out. Opened from the monogram on the Prospects tab.
+// Who you are on this phone: your name and role, what you recorded, settings (organizer), and a reset.
+// Opened from the monogram on the Prospects tab.
 import SwiftUI
 
 struct ProfileView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ProfileViewModel()
-    @State private var showLogoutConfirm = false
-    @State private var showCreateOrganization = false
+    @State private var showReset = false
+    @State private var showSettings = false
+    @State private var showJoin = false
+    @State private var editingName = false
+    @State private var newName = ""
+    @FocusState private var nameFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -25,108 +29,21 @@ struct ProfileView: View {
                     .animation(.curve(0.2), value: viewModel.isLoading)
                 }
 
-                if let event = appState.participantEvent {
-                    NumberedSection(number: "02", title: appState.eventLabel) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(event.name).font(.textHeadline).foregroundStyle(Color.inkPrimary)
-                            Text(appState.currentOrganization?.name ?? "")
-                                .font(.textFootnote).foregroundStyle(Color.inkSecondary)
-                        }
+                VStack(spacing: 0) {
+                    if appState.isAdmin {
+                        row("Réglages", icon: "slider.horizontal.3") { showSettings = true }
+                    } else {
+                        row("Rejoindre un autre événement", icon: "qrcode.viewfinder") { showJoin = true }
                     }
                 }
+                .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
 
-                if appState.isParticipant && appState.role == .conseillerFormation && !appState.programs.isEmpty {
-                    NumberedSection(number: "03", title: "Mes programmes") {
-                        VStack(alignment: .leading, spacing: Space.m) {
-                            PillFlowLayout(spacing: Space.s) {
-                                ForEach(appState.programs) { p in
-                                    ChoiceChip(
-                                        title: p.name,
-                                        isSelected: appState.currentOrganization?.programIds.contains(p.id) ?? false,
-                                        tint: p.swiftUIColor
-                                    ) { Task { await toggleProgram(p.id) } }
-                                }
-                            }
-
-                        }
-                    }
-                }
-
-                if appState.role == .admin && !appState.isParticipant {
-                    NumberedSection(number: "02", title: "Vue en tant que") {
-                        VStack(alignment: .leading, spacing: Space.m) {
-                            PillFlowLayout(spacing: Space.s) {
-                                ForEach(Role.allCases, id: \.self) { r in
-                                    ChoiceChip(title: r.shortLabel, isSelected: appState.effectiveRole == r) {
-                                        appState.previewRole = r == appState.role ? nil : r
-                                    }
-                                }
-                            }
-                            if appState.previewRole != nil {
-                                Text("Aperçu : votre rôle réel n'est pas modifié.")
-                                    .font(.textFootnote)
-                                    .foregroundStyle(Color.accent)
-                            }
-                        }
-                    }
-
-                    NumberedSection(number: "03", title: "Organisations") {
-                        VStack(spacing: 0) {
-                            ForEach(appState.organizations) { org in
-                                let current = org.id == appState.currentOrganization?.id
-                                Button {
-                                    Haptics.selection()
-                                    Task { dismiss(); await appState.selectOrganization(org) }
-                                } label: {
-                                    HStack {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(org.name).font(.textHeadline).foregroundStyle(Color.inkPrimary)
-                                            Text(org.role.label).font(.textFootnote).foregroundStyle(Color.inkSecondary)
-                                        }
-                                        Spacer()
-                                        if current { Image(systemName: "checkmark").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.accent) }
-                                    }
-                                    .padding(.horizontal, Space.l)
-                                    .frame(minHeight: 60)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .disabled(current)
-                                Rule().padding(.leading, Space.l)
-                            }
-                            Button { showCreateOrganization = true } label: {
-                                HStack {
-                                    Text("Créer ou rejoindre une organisation").font(.textSub.weight(.semibold))
-                                    Spacer()
-                                    Image(systemName: "plus").font(.system(size: 13, weight: .bold))
-                                }
-                                .foregroundStyle(Color.inkPrimary)
-                                .padding(.horizontal, Space.l)
-                                .frame(minHeight: 55)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-                    }
-                }
-
-                #if DEBUG
-                if appState.role == .admin {
-                    NumberedSection(number: "··", title: "Debug") {
-                        Toggle(isOn: Binding(
-                            get: { LiveActivityManager.shared.isRunning },
-                            set: { on in on ? LiveActivityManager.shared.startTest() : LiveActivityManager.shared.end() }
-                        )) {
-                            Text("Live Activity de test").font(.textSub)
-                        }
-                    }
-                }
-                #endif
-
-                Button(appState.isParticipant ? "Quitter l'événement" : "Se déconnecter") { showLogoutConfirm = true }
+                Button("Réinitialiser cet appareil") { showReset = true }
                     .buttonStyle(.secondary)
-                    .padding(.top, Space.s)
+
+                Text("Vos données restent sur ce téléphone. Personne d'autre, développeur compris, ne peut les lire.")
+                    .font(.textFootnote)
+                    .foregroundStyle(Color.inkTertiary)
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.xl)
@@ -149,20 +66,21 @@ struct ProfileView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.surfaceBackground)
-        .sheet(isPresented: $showCreateOrganization) {
-            CreateOrganizationView(isOnboarding: false)
+        .sheet(isPresented: $showSettings) {
+            OrganizationSettingsView()
                 .presentationBackground(Color.surfaceBackground)
         }
-        .alert(appState.isParticipant ? "Quitter l'événement ?" : "Se déconnecter ?", isPresented: $showLogoutConfirm) {
-            Button(appState.isParticipant ? "Quitter" : "Se déconnecter") {
+        .sheet(isPresented: $showJoin) {
+            JoinSheet().presentationBackground(Color.surfaceBackground)
+        }
+        .alert("Réinitialiser cet appareil ?", isPresented: $showReset) {
+            Button("Réinitialiser", role: .destructive) {
                 dismiss()
-                Task { await appState.signOut() }
+                appState.resetDevice()
             }
             Button("Annuler", role: .cancel) {}
         } message: {
-            Text(appState.isParticipant
-                 ? "Pour revenir, il faudra de nouveau le code de l'événement."
-                 : "Vous devrez saisir votre mot de passe pour vous reconnecter.")
+            Text("Tous les événements et prospects de ce téléphone seront supprimés. Envoyez-les d'abord à l'organisateur.")
         }
         .alert("Erreur", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
@@ -179,18 +97,48 @@ struct ProfileView: View {
         HStack(alignment: .center, spacing: Space.l) {
             Monogram(name: appState.agentNom, size: 64)
             VStack(alignment: .leading, spacing: 6) {
-                Text(appState.agentNom)
-                    .font(.displayS)
-                    .foregroundStyle(Color.inkPrimary)
-                    .lineLimit(2)
-                HStack(spacing: Space.s) {
-                    BadgeTag(label: appState.role.label, color: appState.role == .admin ? .adminAccent : .info)
-
+                if editingName {
+                    TextField("Votre nom", text: $newName)
+                        .font(.displayS)
+                        .focused($nameFocused)
+                        .submitLabel(.done)
+                        .onSubmit { commitName() }
+                } else {
+                    Button { newName = appState.agentNom; editingName = true; nameFocused = true } label: {
+                        Text(appState.agentNom)
+                            .font(.displayS)
+                            .foregroundStyle(Color.inkPrimary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .buttonStyle(.plain)
                 }
+                Stamp(text: appState.isAdmin ? "Organisateur" : "Agent", color: appState.isAdmin ? .adminAccent : .info)
             }
             Spacer(minLength: 40)
         }
         .padding(.top, Space.l)
+    }
+
+    private func commitName() {
+        let clean = newName.trimmingCharacters(in: .whitespaces)
+        if !clean.isEmpty { appState.updateIdentity(displayName: clean) }
+        editingName = false
+    }
+
+    private func row(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button { Haptics.tap(); action() } label: {
+            HStack(spacing: Space.m) {
+                Image(systemName: icon).foregroundStyle(Color.inkSecondary).frame(width: 24)
+                Text(title).font(.textBody).foregroundStyle(Color.inkPrimary)
+                Spacer()
+                Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.inkTertiary)
+            }
+            .padding(.horizontal, Space.l)
+            .frame(minHeight: 60)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func stat(_ value: String, _ label: String) -> some View {
@@ -207,17 +155,9 @@ struct ProfileView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-
-    private func toggleProgram(_ id: UUID) async {
-        guard var org = appState.currentOrganization else { return }
-        if let programs = await viewModel.toggleProgram(id, current: org.programIds) {
-            org.programIds = programs
-            appState.apply(org)
-        }
-    }
 }
 
-#Preview("Profil — Admin") {
+#Preview("Profil — Organisateur") {
     Text("").sheet(isPresented: .constant(true)) { ProfileView() }
-        .environment(AppState.preview(role: .admin))
+        .environment(AppState.preview(.organizerFull))
 }

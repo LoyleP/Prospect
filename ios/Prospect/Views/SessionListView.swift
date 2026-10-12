@@ -8,7 +8,7 @@ struct SessionListView: View {
     @State private var showProfile = false
     @State private var showEvents = false
     @State private var sessionForObjectives: SessionSummary?
-    @State private var sessionForAccess: SessionSummary?
+    @State private var sessionForInvite: SessionSummary?
     @Environment(AppState.self) private var appState
 
     var body: some View {
@@ -20,15 +20,15 @@ struct SessionListView: View {
                 EmptyStateView(
                     title: "Aucun \(appState.eventLabel.lowercased()).",
                     message: appState.isAdmin
-                        ? "Créez le premier, puis donnez ses codes d'accès à votre équipe."
-                        : "Un administrateur doit d'abord en créer un.",
+                        ? "Créez le premier, puis invitez votre équipe."
+                        : "Scannez l'invitation de l'organisateur depuis votre profil.",
                     actionTitle: appState.isAdmin ? "Créer : \(appState.eventLabel)" : nil,
                     action: appState.isAdmin ? { vm.showNewSessionSheet = true } : nil
                 )
             } else if let selected = vm.selectedSummary {
                 ProspectListView(
                     summary: selected,
-                    isReadOnly: selected.statutSession != .enCours || selected.isArchived || !appState.canEditProspects,
+                    isReadOnly: selected.statutSession == .termine || selected.isArchived,
                     onShowProfile: { showProfile = true },
                     onShowEvents: { showEvents = true }
                 )
@@ -53,7 +53,7 @@ struct SessionListView: View {
                 onSelect: { vm.selectedSummary = $0 },
                 onCreate: { after { vm.showNewSessionSheet = true } },
                 onEdit: { s in after { vm.beginEdit(s) } },
-                onAccess: { s in after { sessionForAccess = s } },
+                onAccess: { s in after { sessionForInvite = s } },
                 onObjectives: { s in after { sessionForObjectives = s } },
                 onToggleArchive: { s in Task { await vm.toggleArchive(s) } },
                 onDelete: { s in after { vm.sessionToDelete = s } }
@@ -64,7 +64,7 @@ struct SessionListView: View {
         .sheet(isPresented: $vm.showNewSessionSheet) {
             EventEditorSheet(
                 mode: .create, eventLabel: appState.eventLabel,
-                name: $vm.newSessionName, date: $vm.newSessionDate, status: .constant(.pasCommence),
+                name: $vm.newSessionName, date: $vm.newSessionDate, status: .constant(.enCours), endsAt: $vm.newSessionEndsAt,
                 canSave: vm.canCreate, isSaving: vm.isLoading
             ) { Task { await vm.createSession() } }
             .presentationDetents([.large])
@@ -73,14 +73,16 @@ struct SessionListView: View {
         .sheet(item: $vm.sessionToEdit) { _ in
             EventEditorSheet(
                 mode: .edit, eventLabel: appState.eventLabel,
-                name: $vm.editSessionName, date: $vm.editSessionDate, status: $vm.editSessionStatut,
+                name: $vm.editSessionName, date: $vm.editSessionDate, status: $vm.editSessionStatut, endsAt: $vm.editSessionEndsAt,
                 canSave: vm.canUpdate, isSaving: vm.isLoading
             ) { Task { await vm.commitEdit() } }
             .presentationDetents([.large])
             .presentationBackground(Color.surfaceBackground)
         }
-        .sheet(item: $sessionForAccess) { summary in
-            EventAccessView(summary: summary) { _ in Task { await vm.load() } }
+        .sheet(item: $sessionForInvite) { summary in
+            InvitationSheet(eventId: summary.id, eventName: summary.name)
+                .presentationDetents([.large])
+                .presentationBackground(Color.surfaceBackground)
         }
         .alert(
             "Supprimer « \(vm.sessionToDelete?.name ?? "") » ?",
@@ -89,7 +91,7 @@ struct SessionListView: View {
             Button("Supprimer", role: .destructive) { Task { await vm.confirmDelete() } }
             Button("Annuler", role: .cancel) { vm.sessionToDelete = nil }
         } message: {
-            Text("Tous les prospects associés seront également supprimés. Cette action est irréversible.")
+            Text("Tous les prospects de cet événement seront supprimés de ce téléphone. Envoyez-les d'abord si besoin.")
         }
         .alert("Erreur", isPresented: Binding(
             get: { vm.errorMessage != nil },
@@ -116,11 +118,11 @@ struct SessionListView: View {
         case .events:      appState.route = nil; showEvents = true
         case .newEvent:    appState.route = nil; viewModel.showNewSessionSheet = true
         case .profile:     appState.route = nil; showProfile = true
-        case .eventAccess:
+        case .invitation:
             appState.route = nil
             Task {
                 for _ in 0..<30 {
-                    if let s = viewModel.selectedSummary, s.agentCode != nil { sessionForAccess = s; return }
+                    if let s = viewModel.selectedSummary { sessionForInvite = s; return }
                     try? await Task.sleep(for: .milliseconds(100))
                 }
             }

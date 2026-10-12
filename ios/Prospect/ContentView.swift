@@ -4,62 +4,27 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(AppState.self) private var appState
+    @State private var toast: Toast?
 
     var body: some View {
         ZStack {
             switch appState.phase {
-            case .signedOut:
-                LoginView().transition(.opacity)
-            case .loading:
-                LaunchView().transition(.opacity)
-            case .needsOrganization:
-                CreateOrganizationView(isOnboarding: true).transition(.opacity)
+            case .onboarding:
+                OnboardingView().transition(.opacity)
             case .ready:
                 MainTabView()
-                    // Fresh view models (and data) whenever the organization changes.
-                    .id(appState.currentOrganization?.id)
                     .transition(.opacity.combined(with: .scale(scale: 0.98)))
             }
         }
         .animation(.curve(0.4), value: appState.phase)
-        // Rebuild everything when the backend is swapped (debug demo mode).
+        // Rebuild everything after an import or a swap of the store (fresh view models, fresh data).
         .id(appState.epoch)
-        .debugMenu()
-    }
-}
-
-private struct LaunchView: View {
-    @Environment(AppState.self) private var appState
-
-    var body: some View {
-        ZStack {
-            PaperBackground()
-            if let error = appState.loadError {
-                VStack(alignment: .leading, spacing: Space.l) {
-                    Text("Connexion\nimpossible.")
-                        .font(.displayXL)
-                        .foregroundStyle(Color.inkPrimary)
-                    Text(error)
-                        .font(.textBody)
-                        .foregroundStyle(Color.inkSecondary)
-                    VStack(spacing: Space.m) {
-                        Button("Réessayer") { Task { await appState.bootstrap() } }
-                            .buttonStyle(.primary)
-                        Button("Se déconnecter") { Task { await appState.signOut() } }
-                            .buttonStyle(.secondary)
-                    }
-                    .padding(.top, Space.s)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(Space.gutter)
-            } else {
-                VStack(spacing: Space.l) {
-                    Wordmark(size: 40)
-                    ProgressView().tint(Color.inkTertiary)
-                }
-            }
+        .toast($toast)
+        .onChange(of: appState.importMessage) { _, text in
+            if let text { toast = Toast(message: text, style: .info); appState.importMessage = nil }
         }
-        .task { await appState.bootstrap() }
+        .onOpenURL { appState.handleIncoming($0) }
+        .debugMenu()
     }
 }
 
@@ -72,7 +37,8 @@ struct MainTabView: View {
             .init(tab: .dashboard, title: "Stats", icon: "chart.bar.xaxis"),
             .init(tab: .archive, title: "Archive", icon: "archivebox"),
         ]
-        if appState.isAdmin { items.append(.init(tab: .team, title: "Équipe", icon: "building.2")) }
+        items.append(.init(tab: .exchange, title: appState.isAdmin ? "Collecte" : "Envoi",
+                           icon: appState.isAdmin ? "tray.and.arrow.down" : "paperplane"))
         return items
     }
 
@@ -101,14 +67,12 @@ struct MainTabView: View {
             .toolbarVisibility(.hidden, for: .tabBar)
             .tag(AppState.MainTab.archive)
 
-            if appState.isAdmin {
-                NavigationStack {
-                    EquipeView()
-                        .themedNavigationBar()
-                }
-                .toolbarVisibility(.hidden, for: .tabBar)
-                .tag(AppState.MainTab.team)
+            NavigationStack {
+                ExchangeView()
+                    .themedNavigationBar()
             }
+            .toolbarVisibility(.hidden, for: .tabBar)
+            .tag(AppState.MainTab.exchange)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack(spacing: Space.m) {
@@ -151,12 +115,12 @@ struct AddProspectButton: View {
     }
 }
 
-#Preview("App — Admin") {
+#Preview("App — Organisateur") {
     ContentView()
-        .environment(AppState.preview(role: .admin))
+        .environment(AppState.preview(.organizerFull))
 }
 
 #Preview("App — Agent") {
     ContentView()
-        .environment(AppState.preview(nom: "Jean Dupont", role: .agent))
+        .environment(AppState.preview(.agentFull))
 }

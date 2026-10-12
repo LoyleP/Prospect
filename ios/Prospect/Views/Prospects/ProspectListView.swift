@@ -15,8 +15,6 @@ struct ProspectListView: View {
     @State private var showFilters = false
     @State private var toast: Toast?
     @State private var highlightedId: UUID?
-    private let network = NetworkMonitor.shared
-    private let pending = PendingProspectStore.shared
     @FocusState private var searchFocused: Bool
     @Environment(AppState.self) private var appState
 
@@ -54,13 +52,6 @@ struct ProspectListView: View {
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)
 
-                if syncBannerText != nil {
-                    syncBanner
-                        .listRowInsets(EdgeInsets(top: 0, leading: Space.l, bottom: Space.s, trailing: Space.l))
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(Color.clear)
-                }
-
                 if viewModel.isLoading && viewModel.prospects.isEmpty {
                     ForEach(0..<7, id: \.self) { _ in
                         SkeletonRow().registerRow()
@@ -77,7 +68,7 @@ struct ProspectListView: View {
                                 Button {
                                     prospectToEdit = prospect
                                 } label: {
-                                    ProspectRow(prospect: prospect, showsStatus: false, isPending: pending.isPending(prospect.id))
+                                    ProspectRow(prospect: prospect, showsStatus: false)
                                         .padding(.horizontal, Space.s)
                                         .background(highlightedId == prospect.id ? Color.accent.opacity(0.16) : Color.clear,
                                                     in: RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
@@ -129,9 +120,7 @@ struct ProspectListView: View {
         .sheet(isPresented: $showAddForm) {
             ProspectFormView(mode: .create(session: summary.asSession), programs: appState.programs, authorName: appState.agentNom) { saved in
                 viewModel.upsertLocally(saved)
-                let offline = pending.isPending(saved.id)
-                toast = Toast(message: offline ? "Enregistré sur ce téléphone, envoi dès le retour du réseau" : "Prospect ajouté",
-                              style: offline ? .info : .success)
+                toast = Toast(message: "Prospect ajouté", style: .success)
                 reveal(saved.id, proxy)
             }
             .presentationBackground(Color.surfaceBackground)
@@ -159,36 +148,6 @@ struct ProspectListView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .onChange(of: appState.route, initial: true) { _, route in handle(route) }
-        .onChange(of: network.isOnline) { _, online in
-            if online { Task { await viewModel.flushPending() } }
-        }
-        }
-    }
-
-    // MARK: Sync state
-
-    private var syncBannerText: String? {
-        let n = pending.items(for: summary.id).count
-        if !network.isOnline {
-            return n > 0 ? "Hors connexion · \(n) en attente d'envoi" : "Hors connexion · vos ajouts sont gardés sur ce téléphone"
-        }
-        return n > 0 ? "Envoi de \(n) prospect\(n > 1 ? "s" : "")…" : nil
-    }
-
-    @ViewBuilder
-    private var syncBanner: some View {
-        if let text = syncBannerText {
-            HStack(spacing: Space.s) {
-                Image(systemName: network.isOnline ? "arrow.triangle.2.circlepath" : "wifi.slash")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(text).font(.textFootnote.weight(.medium))
-                Spacer(minLength: 0)
-            }
-            .foregroundStyle(Color.warning)
-            .padding(.horizontal, Space.l)
-            .frame(minHeight: 44)
-            .background(Color.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
-            .accessibilityElement(children: .combine)
         }
     }
 
@@ -226,8 +185,8 @@ struct ProspectListView: View {
             .accessibilityIdentifier("profileButton")
             Spacer()
             if appState.isAdmin {
-                IconButton(systemImage: "qrcode", label: "Codes d'accès") { appState.route = .eventAccess }
-                    .accessibilityIdentifier("accessCodesButton")
+                IconButton(systemImage: "qrcode", label: "Inviter") { appState.route = .invitation }
+                    .accessibilityIdentifier("inviteButton")
             }
             IconButton(systemImage: "line.3.horizontal.decrease", label: "Filtres", showsBadge: viewModel.hasActiveFilters) {
                 showFilters = true

@@ -8,11 +8,10 @@ struct ProspectApp: App {
 
     init() {
         #if DEBUG
-        DebugLaunch.prepare()   // may switch the app onto the demo backend before AppState reads it
         #endif
         let state = AppState()
         #if DEBUG
-        state.loginIntent = DebugLaunch.intent
+        DebugLaunch.apply(to: state)   // may start from a demo scenario
         #endif
         _appState = State(initialValue: state)
         Self.configureNavigationBarAppearance()
