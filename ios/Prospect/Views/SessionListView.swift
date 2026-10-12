@@ -30,7 +30,13 @@ struct SessionListView: View {
                     summary: selected,
                     isReadOnly: selected.statutSession == .termine || selected.isArchived,
                     onShowProfile: { showProfile = true },
-                    onShowEvents: { showEvents = true }
+                    onShowEvents: { showEvents = true },
+                    eventActions: appState.isAdmin ? EventActions(
+                        edit: { vm.beginEdit(selected) },
+                        objectives: { sessionForObjectives = selected },
+                        toggleArchive: { Task { await vm.toggleArchive(selected) } },
+                        delete: { vm.sessionToDelete = selected }
+                    ) : nil
                 )
                 .id("\(selected.id)-\(selected.statutSession.rawValue)-\(selected.isArchived)")
             }

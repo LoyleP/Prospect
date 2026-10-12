@@ -116,6 +116,28 @@ struct LiveDot: View {
 // MARK: - Icon button
 
 /// A square hairline button for headers: filter, calendar, close…
+/// The round gray look shared by header buttons and header menus.
+struct IconCircle: View {
+    let systemImage: String
+    var showsBadge = false
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 16, weight: .medium))
+            .foregroundStyle(Color.inkPrimary)
+            .frame(width: 44, height: 44)
+            .background(Color.surfaceCard2, in: Circle())
+            .overlay(alignment: .topTrailing) {
+                if showsBadge {
+                    Circle().fill(Color.accent).frame(width: 10, height: 10)
+                        .overlay { Circle().strokeBorder(Color.surfaceBackground, lineWidth: 2) }
+                }
+            }
+            .frame(width: 55, height: 55)
+            .contentShape(Rectangle())
+    }
+}
+
 struct IconButton: View {
     let systemImage: String
     var label: String
@@ -127,19 +149,7 @@ struct IconButton: View {
             Haptics.tap()
             action()
         } label: {
-            Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Color.inkPrimary)
-                .frame(width: 44, height: 44)
-                .background(Color.surfaceCard2, in: Circle())
-                .overlay(alignment: .topTrailing) {
-                    if showsBadge {
-                        Circle().fill(Color.accent).frame(width: 10, height: 10)
-                            .overlay { Circle().strokeBorder(Color.surfaceBackground, lineWidth: 2) }
-                    }
-                }
-                .frame(width: 55, height: 55)
-                .contentShape(Rectangle())
+            IconCircle(systemImage: systemImage, showsBadge: showsBadge)
         }
         .buttonStyle(PressableStyle(scale: 0.94))
         .accessibilityLabel(label)

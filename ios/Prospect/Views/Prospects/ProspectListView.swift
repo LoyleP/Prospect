@@ -3,11 +3,20 @@
 // ruled list. Refreshes itself every few seconds.
 import SwiftUI
 
+/// What the organizer can do to the event shown. Agents get none: the event belongs to the organizer.
+struct EventActions {
+    var edit: () -> Void
+    var objectives: () -> Void
+    var toggleArchive: () -> Void
+    var delete: () -> Void
+}
+
 struct ProspectListView: View {
     let summary: SessionSummary
     let isReadOnly: Bool
     var onShowProfile: () -> Void
     var onShowEvents: () -> Void
+    var eventActions: EventActions?
 
     @State private var viewModel: ProspectListViewModel
     @State private var showAddForm = false
@@ -18,11 +27,13 @@ struct ProspectListView: View {
     @FocusState private var searchFocused: Bool
     @Environment(AppState.self) private var appState
 
-    init(summary: SessionSummary, isReadOnly: Bool, onShowProfile: @escaping () -> Void, onShowEvents: @escaping () -> Void) {
+    init(summary: SessionSummary, isReadOnly: Bool, onShowProfile: @escaping () -> Void, onShowEvents: @escaping () -> Void,
+         eventActions: EventActions? = nil) {
         self.summary = summary
         self.isReadOnly = isReadOnly
         self.onShowProfile = onShowProfile
         self.onShowEvents = onShowEvents
+        self.eventActions = eventActions
         _viewModel = State(initialValue: ProspectListViewModel(session: summary.asSession, isReadOnly: isReadOnly))
     }
 
@@ -191,6 +202,22 @@ struct ProspectListView: View {
             if appState.isAdmin {
                 IconButton(systemImage: "qrcode", label: "Inviter") { appState.route = .invitation }
                     .accessibilityIdentifier("inviteButton")
+            }
+            if let actions = eventActions {
+                // The event's settings, right beside the filters.
+                Menu {
+                    Button { actions.edit() } label: { Label("Modifier", systemImage: "pencil") }
+                    Button { actions.objectives() } label: { Label("Objectifs", systemImage: "target") }
+                    Button { actions.toggleArchive() } label: {
+                        Label(summary.isArchived ? "Désarchiver" : "Archiver", systemImage: summary.isArchived ? "tray.and.arrow.up" : "archivebox")
+                    }
+                    Divider()
+                    Button(role: .destructive) { actions.delete() } label: { Label("Supprimer", systemImage: "trash") }
+                } label: {
+                    IconCircle(systemImage: "slider.horizontal.3")
+                }
+                .accessibilityLabel("Réglages")
+                .accessibilityIdentifier("eventSettingsButton")
             }
             IconButton(systemImage: "line.3.horizontal.decrease", label: "Filtres", showsBadge: viewModel.hasActiveFilters) {
                 showFilters = true
