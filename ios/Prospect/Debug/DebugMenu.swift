@@ -124,6 +124,49 @@ extension DebugLaunch {
         appState.epoch += 1
         return AppState.message(for: outcome)
     }
+
+    /// Fills the event this agent joined with fictional prospects, to push the nearby transfer to its limits.
+    /// They all use `@mock.test` addresses so `removeMockProspects` can take them out again.
+    @MainActor
+    static func addMockProspects(count: Int, on appState: AppState) throws -> String {
+        let firsts = ["Léa", "Hugo", "Inès", "Noé", "Jade", "Lucas", "Emma", "Tom", "Manon", "Louis", "Chloé", "Gabin", "Zoé", "Adam", "Lina", "Nathan", "Eva", "Théo", "Maya", "Rayan"]
+        let lasts = ["Durand", "Bernard", "Moreau", "Lambert", "Fournier", "Girard", "Roux", "Blanc", "Garnier", "Faure", "Mercier", "Lopez", "Henry", "Perrin", "Colin", "Vidal", "Caron", "Marchand", "Bertrand", "Meyer"]
+        let levels = ["< Terminale", "Terminale", "Bac +1", "Bac +2", "Bac +3"]
+        let statuts = [Statut.curieux, .interesse, .rdvInfo, .rdvAdmission].map(\.rawValue)
+        let note = "Rencontré(e) sur le stand, intéressé(e) par une alternance en informatique et par les portes ouvertes de mars. À rappeler en priorité."
+        return try appState.store.write { state in
+            guard let identity = state.identity,
+                  let i = state.events.firstIndex(where: { !$0.isOrganizer && !$0.isArchived }) else { throw ExchangeError.unknownEvent }
+            let event = state.events[i]
+            let programs = state.programs
+            let stamp = ProspectService.iso()
+            let start = event.prospects.filter { $0.email.hasSuffix("@mock.test") }.count
+            for n in 0..<count {
+                let k = start + n
+                state.events[i].prospects.append(Prospect(
+                    id: UUID(), sessionId: event.id, prenom: firsts[k % firsts.count], nom: lasts[(k / firsts.count + k) % lasts.count],
+                    email: "prospect\(k)@mock.test", telephone: String(format: "06 %02d %02d %02d %02d", k % 100, (k / 7) % 100, (k / 13) % 100, (k / 17) % 100),
+                    programId: programs.isEmpty ? nil : programs[k % programs.count].id, niveauActuel: levels[k % levels.count],
+                    statut: statuts[k % statuts.count], notes: k % 3 == 0 ? note : nil, createdBy: state.deviceId,
+                    agentNom: identity.displayName, createdAt: stamp, updatedAt: stamp, deletedAt: nil))
+            }
+            return "\(count) prospects ajoutés à \(event.name)"
+        }
+    }
+
+    @MainActor
+    static func removeMockProspects(on appState: AppState) -> String {
+        let removed = appState.store.write { state -> Int in
+            var removed = 0
+            for i in state.events.indices {
+                let before = state.events[i].prospects.count
+                state.events[i].prospects.removeAll { $0.email.hasSuffix("@mock.test") }
+                removed += before - state.events[i].prospects.count
+            }
+            return removed
+        }
+        return "\(removed) prospects fictifs supprimés"
+    }
 }
 
 // MARK: - Triggers
@@ -198,7 +241,7 @@ struct DebugMenuView: View {
             List {
                 modeSection
                 scenariosSection
-                if appState.phase == .ready { navigationSection; screensSection; exchangeSection }
+                if appState.phase == .ready { navigationSection; screensSection; exchangeSection; mockSection }
                 toolsSection
                 infoSection
             }
@@ -330,6 +373,40 @@ struct DebugMenuView: View {
                 Text("Crée un fichier chiffré à la clé de l'événement affiché dans l'onglet Collecte, avec 2 prospects déjà connus (doublons) et 3 nouveaux, puis l'importe.")
             }
             .listRowBackground(Color.surfaceCard)
+        }
+    }
+
+    /// An agent's phone: bulk fictional prospects to test how much the nearby transfer can carry.
+    @ViewBuilder
+    private var mockSection: some View {
+        if !appState.isAdmin {
+            Section {
+                ForEach([50, 100, 250, 500], id: \.self) { count in
+                    Button {
+                        addMock(count)
+                    } label: {
+                        Label("Ajouter \(count.formatted(.number.locale(Locale(identifier: "fr_FR")))) prospects", systemImage: "plus.circle").foregroundStyle(Color.inkPrimary)
+                    }
+                }
+                Button {
+                    toast = Toast(message: DebugLaunch.removeMockProspects(on: appState), style: .success)
+                    appState.epoch += 1
+                } label: {
+                    Label("Supprimer les prospects fictifs", systemImage: "trash").foregroundStyle(Color.error)
+                }
+            } header: { Text("Données fictives") } footer: {
+                Text("Ajoute des prospects (@mock.test) à l'événement rejoint, pour tester un gros envoi. Le bouton du bas les retire.")
+            }
+            .listRowBackground(Color.surfaceCard)
+        }
+    }
+
+    private func addMock(_ count: Int) {
+        do {
+            toast = Toast(message: try DebugLaunch.addMockProspects(count: count, on: appState), style: .success)
+            appState.epoch += 1
+        } catch {
+            toast = Toast(message: error.localizedDescription, style: .error)
         }
     }
 

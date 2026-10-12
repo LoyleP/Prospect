@@ -34,6 +34,8 @@ struct ExchangeView: View {
         .toast($toast)
         .task { vm.load() }
         .onChange(of: appState.epoch) { _, _ in vm.load() }
+        // Every tab stays alive, so prospects added elsewhere would never reach this count: reload when it is opened.
+        .onChange(of: appState.selectedTab) { _, tab in if tab == .exchange { vm.load() } }
         .onChange(of: vm.message) { _, text in
             if let text { Haptics.success(); toast = Toast(message: text, style: .success); vm.message = nil }
         }
@@ -323,6 +325,8 @@ struct ExchangeView: View {
     // MARK: Formatting
 
     private static func relative(_ date: Date) -> String {
+        // A file that just arrived is stamped a hair after "now": don't print "dans 0 s".
+        if abs(date.timeIntervalSinceNow) < 10 { return "à l'instant" }
         let f = RelativeDateTimeFormatter()
         f.locale = Locale(identifier: "fr_FR")
         f.unitsStyle = .short

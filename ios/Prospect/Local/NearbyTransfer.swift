@@ -286,6 +286,13 @@ final class NearbyClient: NSObject {
         case .connected:
             if let outgoing {
                 state = .sending
+                // A transfer that stalls must fail visibly rather than spin forever.
+                timeout?.cancel()
+                timeout = Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(90))
+                    guard let self, !Task.isCancelled, self.state == .sending else { return }
+                    self.finish(.failed("L'envoi a pris trop de temps."))
+                }
                 do {
                     try session?.send(Nearby.frame(.handover, outgoing), toPeers: [peer], with: .reliable)
                 } catch {
