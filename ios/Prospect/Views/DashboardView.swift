@@ -1,128 +1,78 @@
 // Views/DashboardView.swift
-// Stats dashboard with event switcher.
+// The event report: one page of numbered sections, ruled like a ledger. Numbers first,
+// ranked bars rather than pies, and a chart of when the rush happened.
 import SwiftUI
 import Charts
 
 struct DashboardView: View {
     @State private var viewModel = DashboardViewModel()
     @State private var shareRequest: ShareRequest?
+    @State private var showFilters = false
+    @State private var showEvents = false
+    @State private var showDetails = false
+    @Environment(AppState.self) private var appState
 
     private enum ShareRequest: String, Identifiable {
         case prospects, dashboard
         var id: String { rawValue }
     }
-    @State private var showFilters = false
-    @Environment(AppState.self) private var appState
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
+            VStack(alignment: .leading, spacing: Space.xl) {
+                topBar
 
                 if viewModel.isLoading && viewModel.sessions.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 40)
+                    ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 } else if viewModel.sessions.isEmpty {
-                    ContentUnavailableView(
-                        "Aucune donnée",
-                        systemImage: "calendar.badge.exclamationmark",
-                        description: Text("Les statistiques apparaîtront dès qu'un \(appState.eventLabel.lowercased()) aura été créé dans l'onglet Prospects.")
+                    EmptyStateView(
+                        title: "Rien à compter.",
+                        message: "Les chiffres apparaissent dès qu'un \(appState.eventLabel.lowercased()) existe et que des prospects sont enregistrés."
                     )
-                    .padding(.top, 40)
+                    .padding(.horizontal, -Space.gutter)
                 } else {
-                    if let ts = viewModel.lastUpdatedAt {
-                        Text("Mis à jour à \(ts.formatted(date: .omitted, time: .shortened))")
-                            .font(.geistCaption)
-                            .foregroundStyle(.secondary)
-                    }
-                    if viewModel.isLoading {
-                        ProgressView()
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 40)
+                    titleBlock
+                    if viewModel.prospects.isEmpty && !viewModel.isLoading {
+                        EmptyStateView(title: "Aucun prospect.", message: "Pas encore de chiffres pour cet événement.")
+                            .padding(.horizontal, -Space.gutter)
                     } else {
-                        VStack(alignment: .leading, spacing: 0) {
-                            heroCard
-                            if viewModel.filterPrograms.isEmpty {
-                                Divider().padding(.vertical, 24)
-                                programSection
-                            }
-                            Divider().padding(.vertical, 24)
-                            statutSection
-                            if appState.isAdminOrCF && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty {
-                                Divider().padding(.vertical, 24)
-                                showNoShowSection
-                            }
-                            if appState.isAdmin {
-                                Divider().padding(.vertical, 24)
-                                closingSection
-                            }
-                            Divider().padding(.vertical, 24)
-                            agentSection
+                        overview
+                        pipeline
+                        if viewModel.filterPrograms.isEmpty { programs }
+                        detailsToggle
+                        if showDetails {
+                            arrivals
+                            if appState.isAdminOrCF && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty { attendance }
+                            if appState.isAdmin { closing }
+                            members
                         }
                     }
                 }
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 16)
-            .padding(.bottom, 24)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.s)
+            .padding(.bottom, 110)
         }
-        .themedScrollBackground()
-        .groupBoxStyle(SurfaceCardGroupBoxStyle())
-        .navigationTitle("Tableau de bord")
-        .navigationBarTitleDisplayMode(.large)
-        .toolbar {
-            ToolbarItemGroup(placement: .navigationBarTrailing) {
-                if !viewModel.prospects.isEmpty {
-                    Button { showFilters = true } label: {
-                        Image(systemName: viewModel.hasActiveFilters
-                            ? "line.3.horizontal.decrease.circle.fill"
-                            : "line.3.horizontal.decrease.circle")
-                    }
-                }
-                if appState.canExport, viewModel.selectedSession != nil, !viewModel.prospects.isEmpty {
-                    Menu {
-                        Button {
-                            shareRequest = .prospects
-                        } label: {
-                            Label("Liste des prospects (CSV)", systemImage: "person.text.rectangle")
-                        }
-                        Button {
-                            shareRequest = .dashboard
-                        } label: {
-                            Label("Statistiques (CSV)", systemImage: "chart.bar")
-                        }
-                    } label: {
-                        Image(systemName: "square.and.arrow.up")
-                    }
-                }
-                if !viewModel.sessions.isEmpty || !viewModel.archivedSessions.isEmpty {
-                    Menu {
-                        ForEach(viewModel.sessions) { s in
-                            Button {
-                                Task { await viewModel.selectSession(s) }
-                            } label: {
-                                Label(s.name, systemImage: viewModel.selectedSession?.id == s.id ? "checkmark" : "")
-                            }
-                        }
-                        if !viewModel.archivedSessions.isEmpty {
-                            Menu("Archivées") {
-                                ForEach(viewModel.archivedSessions) { s in
-                                    Button {
-                                        Task { await viewModel.selectSession(s) }
-                                    } label: {
-                                        Label(s.name, systemImage: viewModel.selectedSession?.id == s.id ? "checkmark" : "")
-                                    }
-                                }
-                            }
-                        }
-                    } label: {
-                        Image(systemName: "calendar")
-                    }
-                }
-            }
-        }
+        .background(PaperBackground())
+        .toolbar(.hidden, for: .navigationBar)
+        .refreshable { await viewModel.loadSessions() }
         .sheet(isPresented: $showFilters) {
             DashboardFilterSheet(viewModel: viewModel, programs: appState.programs)
+                .presentationDetents([.medium, .large])
+                .presentationBackground(Color.surfaceBackground)
+        }
+        .sheet(isPresented: $showEvents) {
+            EventPickerSheet(
+                summaries: viewModel.sessions + viewModel.archivedSessions,
+                selectedId: viewModel.selectedSession?.id,
+                isAdmin: false,
+                eventLabel: appState.eventLabel,
+                onSelect: { s in Task { await viewModel.selectSession(s) } },
+                onCreate: {}, onEdit: { _ in }, onAccess: { _ in }, onObjectives: { _ in },
+                onToggleArchive: { _ in }, onDelete: { _ in }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationBackground(Color.surfaceBackground)
         }
         .sheet(item: $shareRequest) { request in
             if let session = viewModel.selectedSession {
@@ -165,310 +115,394 @@ struct DashboardView: View {
             viewModel.programs = appState.programs
             await viewModel.loadSessions()
         }
-        .refreshable { await viewModel.loadSessions() }
     }
 
-    // MARK: - Hero card
+    // MARK: - Header
 
-    private var heroCard: some View {
-        GroupBox {
-            VStack(alignment: .center, spacing: 8) {
-                Text("\(viewModel.totalProspects)")
-                    .font(.geistLargeStat)
-                    .monospacedDigit()
-                if let session = viewModel.selectedSession {
-                    Text("\(session.name)  ·  \(session.formattedDate)")
-                        .font(.geistSubheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+    private var topBar: some View {
+        HStack(spacing: Space.m) {
+            Spacer()
+            if !viewModel.prospects.isEmpty {
+                IconButton(systemImage: "line.3.horizontal.decrease", label: "Filtres", showsBadge: viewModel.hasActiveFilters) { showFilters = true }
+            }
+            if appState.canExport, viewModel.selectedSession != nil, !viewModel.prospects.isEmpty {
+                Menu {
+                    Button { shareRequest = .prospects } label: { Label("Liste des prospects (CSV)", systemImage: "person.text.rectangle") }
+                    Button { shareRequest = .dashboard } label: { Label("Statistiques (CSV)", systemImage: "chart.bar") }
+                } label: {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(Color.inkPrimary)
+                        .frame(width: 44, height: 44)
+                        .background(Color.surfaceCard2, in: Circle())
+                        .frame(width: 55, height: 55)
+                        .contentShape(Rectangle())
                 }
-                if viewModel.totalProspects > 0 {
-                    Divider().padding(.vertical, 10)
-                    HStack(spacing: 0) {
-                        VStack(alignment: .center, spacing: 4) {
-                            Text("\(Int(viewModel.rdvRate.rounded()))%")
-                                .font(.geistMonoTitle3.weight(.bold))
-                            Text("Taux RDV")
-                                .font(.geistCaption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        Divider().frame(height: 32)
-                        VStack(alignment: .center, spacing: 4) {
-                            Text("\(viewModel.rdvCount)")
-                                .font(.geistMonoTitle3.weight(.bold))
-                            Text("RDVs")
-                                .font(.geistCaption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
-                        Divider().frame(height: 32)
-                        VStack(alignment: .center, spacing: 2) {
-                            Text("\(viewModel.byStatut.first(where: { $0.statut == .rdvAdmission })?.count ?? 0)")
-                                .font(.geistMonoTitle3.weight(.bold))
-                            Text("Admissions")
-                                .font(.geistCaption)
-                                .foregroundStyle(.secondary)
-                        }
-                        .frame(maxWidth: .infinity)
+                .accessibilityLabel("Exporter")
+            }
+        }
+        .frame(minHeight: 42)
+    }
+
+    @ViewBuilder
+    private var titleBlock: some View {
+        if let session = viewModel.selectedSession {
+            VStack(alignment: .leading, spacing: Space.s) {
+                Button {
+                    Haptics.tap()
+                    showEvents = true
+                } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                        Text(session.name)
+                            .font(.displayL)
+                            .foregroundStyle(Color.inkPrimary)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.75)
+                            .multilineTextAlignment(.leading)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Color.inkTertiary)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(PressableStyle(scale: 0.995))
+                if viewModel.hasActiveFilters {
+                    Text("Filtres actifs : chiffres partiels.")
+                        .font(.textFootnote.weight(.semibold))
+                        .foregroundStyle(Color.accent)
                 }
             }
-            .frame(maxWidth: .infinity)
         }
     }
 
-    // MARK: - Program donut chart
+    // MARK: - Sections
 
-    private var programSection: some View {
-        GroupBox {
-                Chart(viewModel.byProgram) { item in
-                    let program = appState.program(item.programId)
-                    SectorMark(
-                        angle: .value("Prospects", item.count),
-                        innerRadius: .ratio(0.52),
-                        angularInset: 1.5
-                    )
-                    .foregroundStyle(program?.swiftUIColor ?? Color.gray400)
-                    .cornerRadius(4)
-                    .annotation(position: .overlay) {
-                        let pct = viewModel.totalProspects > 0
-                            ? Int((Double(item.count) / Double(viewModel.totalProspects) * 100).rounded())
-                            : 0
-                        if pct >= 5 {
-                            VStack(spacing: 1) {
-                                Text("\(item.count)")
-                                    .font(.geistMonoCaption.weight(.bold))
-                                Text("\(pct)%")
-                                    .font(.geistCaption2)
-                            }
-                            .foregroundStyle(program?.labelColor ?? .white)
-                        }
+    private var overview: some View {
+        section("01", "Vue d'ensemble") {
+            VStack(alignment: .leading, spacing: Space.l) {
+                HStack(alignment: .bottom) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("\(viewModel.totalProspects)")
+                            .font(.numeral(88))
+                            .foregroundStyle(Color.inkPrimary)
+                            .monospacedDigit()
+                            .contentTransition(.numericText())
+                        label("prospects")
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: Space.m) {
+                        bigStat("\(viewModel.rdvCount)", "rendez-vous")
+                        bigStat("\(Int(viewModel.rdvRate.rounded())) %", "taux de RDV")
                     }
                 }
-                .chartLegend(.hidden)
-                .frame(height: 320)
-
-                // Manual legend — needed because direct .foregroundStyle() bypasses chart's auto legend
-                let legendColumns = [GridItem(.flexible()), GridItem(.flexible())]
-                LazyVGrid(columns: legendColumns, alignment: .leading, spacing: 6) {
-                    ForEach(viewModel.byProgram) { item in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(appState.program(item.programId)?.swiftUIColor ?? Color.gray400)
-                                .frame(width: 8, height: 8)
-                            Text(appState.programName(item.programId))
-                                .font(.geistCaption)
-                                .lineLimit(1)
-                        }
-                    }
+                if viewModel.hasRdvTargets {
+                    TargetGauge(rate: viewModel.rdvRate, low: viewModel.rdvTargetLow, high: viewModel.rdvTargetHigh)
                 }
-                .padding(.top, 4)
+            }
         }
     }
 
-    // MARK: - Statut breakdown
-
-    private var statutSection: some View {
-        GroupBox {
-            VStack(spacing: 16) {
+    private var pipeline: some View {
+        section("02", "Avancement") {
+            let maxCount = max(1, viewModel.byStatut.map(\.count).max() ?? 1)
+            VStack(spacing: Space.l) {
                 ForEach(viewModel.byStatut) { item in
-                    HStack {
-                        StatutBadge(statut: item.statut)
-                        Spacer()
-                        Text("\(item.count)")
-                            .font(.geistMonoHeadline)
-                    }
-                    .opacity(item.count == 0 ? 0.35 : 1.0)
-                }
-            }
-        }
-    }
-
-    // MARK: - Show / No-Show
-
-    private var showNoShowSection: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 6) {
-                    GeometryReader { geo in
-                        let showFraction = min(1.0, Double(viewModel.totalProspects) / Double(viewModel.preRegistered))
-                        let showWidth    = geo.size.width * CGFloat(showFraction)
-                        let noShowWidth  = geo.size.width - showWidth
-                        HStack(spacing: 0) {
-                            ZStack {
-                                Rectangle().fill(Color.info)
-                                Text("\(viewModel.totalProspects) P (\(Int((showFraction * 100).rounded()))%)")
-                                    .font(.geistMonoCaption.weight(.bold))
-                                    .foregroundStyle(.white)
-                                    .lineLimit(1)
-                                    .padding(.horizontal, 4)
-                            }
-                            .frame(width: max(0, showWidth))
-
-                            ZStack {
-                                Rectangle().fill(Color.gray300)
-                                Text("\(viewModel.noShowCount) NS (\(100 - Int((showFraction * 100).rounded()))%)")
-                                    .font(.geistMonoCaption.weight(.bold))
-                                    .foregroundStyle(.primary)
-                                    .lineLimit(1)
-                                    .padding(.horizontal, 4)
-                            }
-                            .frame(width: max(0, noShowWidth))
-                        }
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                    }
-                    .frame(height: 36)
-
-                    (Text("Pré-inscrits : ").font(.geistCaption)
-                    + Text("\(viewModel.preRegistered)").font(.geistMonoCaption)
-                    + Text(" · No shows (NS) : ").font(.geistCaption)
-                    + Text("\(viewModel.noShowCount)").font(.geistMonoCaption))
-                        .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // MARK: - Closing
-
-    private var closingSection: some View {
-        GroupBox {
-            VStack(alignment: .leading, spacing: 24) {
-
-                // Taux de closing RDV
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Taux de closing RDV")
-                        .font(.geistHeadline)
-                    Chart {
-                        // Without targets the bar fades over the whole 0–100% range.
-                        let gradientTarget = viewModel.rdvTargetHigh > 0 ? Double(viewModel.rdvTargetHigh) : 100
-                        let gradientEndX = viewModel.rdvRate > 0 ? gradientTarget / viewModel.rdvRate : 1.0
-                        BarMark(
-                            xStart: .value("", 0.0),
-                            xEnd: .value("Taux", viewModel.rdvRate),
-                            y: .value("", "")
-                        )
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [Color.targetLow, Color.targetHigh],
-                                startPoint: .leading,
-                                endPoint: UnitPoint(x: gradientEndX, y: 0.5)
-                            )
-                        )
-                        .cornerRadius(4)
-
-                        if viewModel.hasRdvTargets {
-                        RuleMark(x: .value("Objectif bas", Double(viewModel.rdvTargetLow)))
-                            .foregroundStyle(Color.targetLow)
-                            .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 4]))
-                            .annotation(position: .top, alignment: .center) {
-                                Text("\(viewModel.rdvTargetLow)%")
-                                    .font(.geistMonoCaption2.weight(.bold))
-                                    .foregroundStyle(Color.targetLow)
-                            }
-
-                        RuleMark(x: .value("Objectif haut", Double(viewModel.rdvTargetHigh)))
-                            .foregroundStyle(Color.targetHigh)
-                            .lineStyle(StrokeStyle(lineWidth: 2, dash: [4, 4]))
-                            .annotation(position: .top, alignment: .center) {
-                                Text("\(viewModel.rdvTargetHigh)%")
-                                    .font(.geistMonoCaption2.weight(.bold))
-                                    .foregroundStyle(Color.targetHigh)
-                            }
-                        }
-                    }
-                    .chartXScale(domain: 0...100)
-                    .chartXAxis {
-                        AxisMarks(values: [0, 25, 50, 75, 100]) { value in
-                            AxisValueLabel {
-                                Text("\(value.as(Int.self) ?? 0)%").font(.geistMonoCaption2)
-                            }
-                            AxisGridLine()
-                        }
-                    }
-                    .chartYAxis(.hidden)
-                    .frame(height: 72)
-
-                    (Text("\(Int(viewModel.rdvRate.rounded()))%").font(.geistMonoCaption)
-                    + Text(" des prospects ont un RDV · ").font(.geistCaption)
-                    + Text("\(viewModel.rdvCount)").font(.geistMonoCaption)
-                    + Text(" sur ").font(.geistCaption)
-                    + Text("\(viewModel.totalProspects)").font(.geistMonoCaption))
-                        .foregroundStyle(.secondary)
-                }
-
-                // Advisor breakdown — grouped by program
-                Divider()
-                if viewModel.closingByProgram.isEmpty {
-                    Text("Aucun conseiller rattaché à un programme. Assignez des programmes dans l'onglet Équipe.")
-                        .font(.geistSubheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                } else {
-                    VStack(alignment: .leading, spacing: 14) {
-                        ForEach(viewModel.closingByProgram, id: \.program.id) { group in
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(group.program.name)
-                                    .font(.geistCaption.weight(.bold))
-                                    .foregroundStyle(.secondary)
-                                    .textCase(.uppercase)
-                                ForEach(group.items) { item in
-                                    HStack(spacing: 12) {
-                                        Text(item.cfNom)
-                                            .font(.geistSubheadline)
-                                        Spacer()
-                                        Label("\(item.rdvInfo)", systemImage: "calendar")
-                                            .font(.geistMonoCaption)
-                                            .foregroundStyle(Color.warning)
-                                        Label("\(item.rdvAdmission)", systemImage: "calendar.badge.checkmark")
-                                            .font(.geistMonoCaption)
-                                            .foregroundStyle(Color.success)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Agents
-
-    private var agentSection: some View {
-        GroupBox {
-            if viewModel.byAgent.isEmpty {
-                Text("Aucune donnée")
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-            } else {
-                LazyVStack(spacing: 14) {
-                    ForEach(viewModel.byAgent) { item in
+                    VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text(item.agentNom)
-                                .lineLimit(1)
-                                .truncationMode(.tail)
+                            StatusStamp(statut: item.statut)
                             Spacer()
                             Text("\(item.count)")
-                                .font(.geistMonoHeadline)
+                                .font(.figureHeadline)
+                                .foregroundStyle(Color.inkPrimary)
+                        }
+                        Bar(fraction: Double(item.count) / Double(maxCount), color: item.statut.color)
+                    }
+                    .opacity(item.count == 0 ? 0.45 : 1)
+                }
+            }
+        }
+    }
+
+    private var programs: some View {
+        section("03", "Programmes") {
+            let items = viewModel.byProgram
+            let maxCount = max(1, items.map(\.count).max() ?? 1)
+            VStack(spacing: Space.l) {
+                ForEach(items) { item in
+                    let program = appState.program(item.programId)
+                    let objective = program.flatMap { viewModel.selectedSession?.programObjectives[$0.id] }
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: Space.s) {
+                            Circle().fill(program?.swiftUIColor ?? Color.inkTertiary).frame(width: 9, height: 9)
+                            Text(appState.programName(item.programId))
+                                .font(.textSub.weight(.semibold))
+                                .foregroundStyle(Color.inkPrimary)
+                                .lineLimit(1)
+                            Spacer()
+                            Text(objective.map { "\(item.count) / \($0)" } ?? "\(item.count)")
+                                .font(.figureHeadline)
+                                .foregroundStyle(Color.inkPrimary)
+                        }
+                        let scale = max(objective ?? maxCount, 1)   // bars fill toward the objective when there is one
+                        Bar(fraction: Double(item.count) / Double(scale), color: program?.swiftUIColor ?? Color.inkTertiary)
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var arrivals: some View {
+        if viewModel.arrivals.count > 1 {
+            section("04", "Affluence") {
+                VStack(alignment: .leading, spacing: Space.m) {
+                    if let peak = viewModel.peakHour, peak.count > 0 {
+                        Text("Pic à \(peak.hour) h : \(peak.count) prospect\(peak.count > 1 ? "s" : "").")
+                            .font(.textSub)
+                            .foregroundStyle(Color.inkSecondary)
+                    }
+                    Chart(viewModel.arrivals) { item in
+                        BarMark(x: .value("Heure", "\(item.hour) h"), y: .value("Prospects", item.count))
+                            .foregroundStyle(item.hour == viewModel.peakHour?.hour ? Color.accent : Color.inkPrimary)
+                            .cornerRadius(2)
+                            .annotation(position: .top, spacing: 3) {
+                                if item.count > 0 {
+                                    Text("\(item.count)")
+                                        .font(.textCaption.weight(.medium))
+                                        .foregroundStyle(Color.inkSecondary)
+                                }
+                            }
+                    }
+                    .chartYAxis(.hidden)
+                    .chartXAxis {
+                        AxisMarks { _ in
+                            AxisValueLabel().font(.labelCaption2).foregroundStyle(Color.inkTertiary)
+                        }
+                    }
+                    .frame(height: 150)
+                }
+            }
+        }
+    }
+
+    private var attendance: some View {
+        section("05", "Présence") {
+            let registered = viewModel.prospects.count
+            let expected = viewModel.preRegistered
+            let fraction = min(1, Double(registered) / Double(max(expected, 1)))
+            VStack(alignment: .leading, spacing: Space.m) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(registered)")
+                        .font(.numeral(40))
+                        .foregroundStyle(Color.inkPrimary)
+                    Text("sur \(expected) pré-inscrits")
+                        .font(.textSub)
+                        .foregroundStyle(Color.inkSecondary)
+                    Spacer()
+                    Text("\(Int((fraction * 100).rounded())) %")
+                        .font(.figureHeadline)
+                        .foregroundStyle(Color.inkPrimary)
+                }
+                Bar(fraction: fraction, color: .inkPrimary)
+
+            }
+        }
+    }
+
+    private var closing: some View {
+        section("06", "Closing") {
+            if viewModel.closingByProgram.isEmpty {
+                Text("Aucun conseiller rattaché à un programme.")
+                    .font(.textSub)
+                    .foregroundStyle(Color.inkSecondary)
+            } else {
+                VStack(alignment: .leading, spacing: Space.l) {
+                    ForEach(viewModel.closingByProgram, id: \.program.id) { group in
+                        VStack(alignment: .leading, spacing: Space.s) {
+                            HStack(spacing: Space.s) {
+                                Circle().fill(group.program.swiftUIColor).frame(width: 9, height: 9)
+                                label(group.program.name)
+                            }
+                            ForEach(group.items) { item in
+                                HStack {
+                                    Text(item.cfNom)
+                                        .font(.textSub)
+                                        .foregroundStyle(Color.inkPrimary)
+                                    Spacer()
+                                    countChip("info", item.rdvInfo, Statut.rdvInfo.color)
+                                    countChip("admission", item.rdvAdmission, Statut.rdvAdmission.color)
+                                }
+                                .padding(.vertical, 4)
+                                Rule()
+                            }
                         }
                     }
                 }
             }
         }
     }
-}
 
-private struct SurfaceCardGroupBoxStyle: GroupBoxStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(Color.surfaceCard)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+    private var members: some View {
+        section("07", "Équipe") {
+            let items = viewModel.byAgent
+            let maxCount = max(1, items.map(\.count).max() ?? 1)
+            VStack(spacing: Space.m) {
+                ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                    HStack(spacing: Space.m) {
+                        Text(String(format: "%02d", index + 1))
+                            .font(.figure(12, weight: .semibold))
+                            .foregroundStyle(Color.inkTertiary)
+                            .frame(width: 22, alignment: .leading)
+                        Text(item.agentNom)
+                            .font(.textSub)
+                            .foregroundStyle(Color.inkPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: Space.s)
+                        Bar(fraction: Double(item.count) / Double(maxCount), color: .inkPrimary)
+                            .frame(width: 90)
+                        Text("\(item.count)")
+                            .font(.figureHeadline)
+                            .foregroundStyle(Color.inkPrimary)
+                            .frame(width: 30, alignment: .trailing)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Building blocks
+
+    private func section<Content: View>(_ number: String, _ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Space.l) {
+            Text(title)
+                .font(.textSub.weight(.medium))
+                .foregroundStyle(Color.inkTertiary)
+            content()
+        }
+    }
+
+    /// Everything beyond the essentials stays folded away until asked for.
+    private var detailsToggle: some View {
+        Button {
+            Haptics.selection()
+            withAnimation(.curve(0.2)) { showDetails.toggle() }
+        } label: {
+            HStack {
+                Text(showDetails ? "Moins de détails" : "Plus de détails")
+                    .font(.textSub.weight(.semibold))
+                Spacer()
+                Image(systemName: showDetails ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12, weight: .bold))
+            }
+            .foregroundStyle(Color.inkPrimary)
+            .padding(.vertical, Space.m)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) { Rule() }
+        .overlay(alignment: .bottom) { Rule() }
+    }
+
+    private func label(_ text: String) -> some View {
+        Text(text)
+            .font(.textCaption.weight(.medium))
+            .foregroundStyle(Color.inkTertiary)
+    }
+
+    private func bigStat(_ value: String, _ caption: String) -> some View {
+        VStack(alignment: .trailing, spacing: 1) {
+            Text(value)
+                .font(.numeral(34))
+                .foregroundStyle(Color.inkPrimary)
+                .monospacedDigit()
+                .contentTransition(.numericText())
+            label(caption)
+        }
+    }
+
+    private func countChip(_ title: String, _ count: Int, _ color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(color).frame(width: 8, height: 8)
+            Text("\(count)")
+                .font(.figureHeadline)
+                .foregroundStyle(Color.inkPrimary)
+            Text(title)
+                .font(.textCaption)
+                .foregroundStyle(Color.inkTertiary)
+        }
+        .padding(.leading, Space.m)
+    }
+
+    private func percent(_ part: Int, of total: Int) -> String {
+        total > 0 ? "\(Int((Double(part) / Double(total) * 100).rounded())) %" : "–"
     }
 }
 
-// MARK: - Dashboard filter sheet
+// MARK: - Bar & gauge
+
+/// A flat horizontal bar on a hairline track.
+struct Bar: View {
+    let fraction: Double
+    var color: Color = .inkPrimary
+    var height: CGFloat = 8
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.rule)
+                Capsule()
+                    .fill(color)
+                    .frame(width: max(0, min(1, fraction)) * geo.size.width)
+            }
+        }
+        .frame(height: height)
+        .animation(.curve(0.35), value: fraction)
+        .accessibilityHidden(true)
+    }
+}
+
+/// The RDV rate against its target band, on a 0–100 % ruler.
+struct TargetGauge: View {
+    let rate: Double
+    let low: Int
+    let high: Int
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            GeometryReader { geo in
+                let w = geo.size.width
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.rule).frame(height: 8)
+                    // Target band
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .fill(Color.success.opacity(0.28))
+                        .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.success, lineWidth: 1))
+                        .frame(width: CGFloat(max(0, high - low)) / 100 * w, height: 18)
+                        .offset(x: CGFloat(low) / 100 * w)
+                    // Current rate
+                    Capsule().fill(Color.inkPrimary).frame(width: min(100, rate) / 100 * w, height: 8)
+                }
+                .frame(height: 18)
+            }
+            .frame(height: 18)
+            HStack {
+                Text("0 %")
+                Spacer()
+                Text("Objectif \(low)–\(high) %")
+                    .foregroundStyle(Color.success)
+                Spacer()
+                Text("100 %")
+            }
+            .font(.labelCaption2)
+            .foregroundStyle(Color.inkTertiary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Taux de RDV \(Int(rate.rounded())) pour cent, objectif entre \(low) et \(high) pour cent")
+    }
+}
+
+// MARK: - Filter sheet
 
 private struct DashboardFilterSheet: View {
     var viewModel: DashboardViewModel
@@ -476,87 +510,82 @@ private struct DashboardFilterSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 0) {
-                    pillGroup {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.xl) {
+                HStack {
+                    Text("Filtres")
+                        .font(.displayS)
+                        .foregroundStyle(Color.inkPrimary)
+                    Spacer()
+                    if viewModel.hasActiveFilters {
+                        Button("Réinitialiser") { Haptics.tap(); withAnimation(.curve()) { viewModel.clearFilters() } }
+                            .buttonStyle(.link)
+                    }
+                }
+                if !programs.isEmpty {
+                    group("Programme") {
                         ForEach(programs) { p in
-                            Toggle(p.name, isOn: Binding(
-                                get: { viewModel.filterPrograms.contains(p.id) },
-                                set: { viewModel.filterPrograms.toggle(member: p.id, isOn: $0) }
-                            ))
-                            .toggleStyle(FilterToggleStyle())
+                            ChoiceChip(title: p.name, isSelected: viewModel.filterPrograms.contains(p.id), tint: p.swiftUIColor) {
+                                viewModel.filterPrograms.toggle(member: p.id, isOn: !viewModel.filterPrograms.contains(p.id))
+                            }
                         }
                     }
-                    Divider()
-                    pillGroup {
-                        ForEach(Statut.allCases) { s in
-                            Toggle(s.rawValue, isOn: Binding(
-                                get: { viewModel.filterStatuts.contains(s) },
-                                set: { viewModel.filterStatuts.toggle(member: s, isOn: $0) }
-                            ))
-                            .toggleStyle(FilterToggleStyle())
+                }
+                group("Statut") {
+                    ForEach(Statut.allCases) { s in
+                        ChoiceChip(title: s.rawValue, isSelected: viewModel.filterStatuts.contains(s), tint: s.color) {
+                            viewModel.filterStatuts.toggle(member: s, isOn: !viewModel.filterStatuts.contains(s))
                         }
                     }
-                    Divider()
-                    pillGroup {
-                        ForEach(NiveauActuel.allCases) { n in
-                            Toggle(n.rawValue, isOn: Binding(
-                                get: { viewModel.filterNiveaux.contains(n) },
-                                set: { viewModel.filterNiveaux.toggle(member: n, isOn: $0) }
-                            ))
-                            .toggleStyle(FilterToggleStyle())
+                }
+                group("Niveau actuel") {
+                    ForEach(NiveauActuel.allCases) { n in
+                        ChoiceChip(title: n.rawValue, isSelected: viewModel.filterNiveaux.contains(n)) {
+                            viewModel.filterNiveaux.toggle(member: n, isOn: !viewModel.filterNiveaux.contains(n))
                         }
                     }
-                    if !viewModel.agentNames.isEmpty {
-                        Divider()
-                        pillGroup {
-                            ForEach(viewModel.agentNames, id: \.self) { name in
-                                Toggle(name, isOn: Binding(
-                                    get: { viewModel.filterAgents.contains(name) },
-                                    set: { viewModel.filterAgents.toggle(member: name, isOn: $0) }
-                                ))
-                                .toggleStyle(FilterToggleStyle())
+                }
+                if viewModel.agentNames.count > 1 {
+                    group("Enregistré par") {
+                        ForEach(viewModel.agentNames, id: \.self) { name in
+                            ChoiceChip(title: name, isSelected: viewModel.filterAgents.contains(name)) {
+                                viewModel.filterAgents.toggle(member: name, isOn: !viewModel.filterAgents.contains(name))
                             }
                         }
                     }
                 }
             }
-            .themedScrollBackground()
-            .navigationTitle("Filtres")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "xmark")
-                            .foregroundStyle(.secondary)
-                            .fontWeight(.semibold)
-                    }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if viewModel.hasActiveFilters {
-                        Button("Réinitialiser", role: .destructive) {
-                            viewModel.clearFilters()
-                        }
-                    }
-                }
-            }
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.xl)
+            .padding(.bottom, Space.l)
         }
-        .presentationDetents([.medium, .large])
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button {
+                dismiss()
+            } label: {
+                Text("Voir \(viewModel.totalProspects) prospect\(viewModel.totalProspects > 1 ? "s" : "")")
+                    .contentTransition(.numericText())
+            }
+            .buttonStyle(.primary)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.m)
+            .padding(.bottom, Space.s)
+            .background(Color.surfaceBackground.opacity(0.96).ignoresSafeArea(edges: .bottom))
+        }
+        .presentationDragIndicator(.visible)
     }
 
-    @ViewBuilder
-    private func pillGroup<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        PillFlowLayout(spacing: 8) {
-            content()
+    private func group<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: Space.m) {
+            Text(title)
+                .font(.textSub.weight(.medium))
+                .foregroundStyle(Color.inkTertiary)
+            PillFlowLayout(spacing: Space.s) { content() }
         }
-        .padding(16)
     }
 }
 
 #Preview("Dashboard — Admin") {
-    NavigationStack {
-        DashboardView()
-    }
-    .environment(AppState.preview(role: .admin))
+    NavigationStack { DashboardView() }
+        .environment(AppState.preview(role: .admin))
 }

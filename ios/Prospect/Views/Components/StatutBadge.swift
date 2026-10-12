@@ -1,5 +1,5 @@
 // Views/Components/StatutBadge.swift
-// Reusable color-coded badge for pipeline stage display.
+// Colour semantics for pipeline stages, plus the badge used by the dashboard.
 import SwiftUI
 
 extension Statut {
@@ -17,6 +17,6 @@ struct StatutBadge: View {
     let statut: Statut
 
     var body: some View {
-        BadgeTag(label: statut.rawValue, color: statut.color)
+        StatusStamp(statut: statut)
     }
 }

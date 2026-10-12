@@ -64,7 +64,7 @@ final class AuthService: @unchecked Sendable {
         return Date(timeIntervalSince1970: seconds)
     }
 
-    var isSignedIn: Bool { refreshToken != nil }
+    var isSignedIn: Bool { DemoMode.active?.isSignedIn ?? (refreshToken != nil) }
 
     func store(_ session: AuthSession) {
         keychain["access_token"]  = session.accessToken
@@ -88,12 +88,14 @@ final class AuthService: @unchecked Sendable {
 
     /// Creates an admin account. No email verification by design.
     func signUp(email: String, password: String, displayName: String) async throws {
+        if let demo = DemoMode.active { return try await demo.simulateSignIn(.admin(name: displayName, hasOrganization: false)) }
         store(try await APIClient.shared.sendPublic(
             "POST", "/auth/signup", body: ["email": email, "password": password, "display_name": displayName]
         ) as AuthSession)
     }
 
     func logIn(email: String, password: String) async throws {
+        if let demo = DemoMode.active { return try await demo.simulateSignIn(.admin(name: "Camille Martin", hasOrganization: true)) }
         store(try await APIClient.shared.sendPublic(
             "POST", "/auth/login", body: ["email": email, "password": password]
         ) as AuthSession)
@@ -101,12 +103,14 @@ final class AuthService: @unchecked Sendable {
 
     /// Joins one event as agent or conseiller with the code an admin handed out.
     func join(code: String, displayName: String) async throws {
+        if let demo = DemoMode.active { return try await demo.simulateSignIn(.participant(code: code, name: displayName)) }
         store(try await APIClient.shared.sendPublic(
             "POST", "/auth/join", body: ["code": code, "display_name": displayName]
         ) as AuthSession)
     }
 
     func logout() async {
+        if let demo = DemoMode.active { demo.signOut(); return }
         if let token = refreshToken {
             let _: NoContent? = try? await APIClient.shared.sendPublic("POST", "/auth/logout", body: ["refresh_token": token])
         }

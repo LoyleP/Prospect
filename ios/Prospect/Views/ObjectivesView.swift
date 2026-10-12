@@ -1,9 +1,10 @@
 // Views/ObjectivesView.swift
-// Admin-only page to set objectives for the current event.
+// Admin-only: the expected turnout, the RDV-rate target and a count per program for one event.
 import SwiftUI
 
 struct ObjectivesView: View {
     @State private var viewModel: ObjectivesViewModel
+    @State private var toast: Toast?
     @Environment(AppState.self) private var appState
 
     init(session: SessionSummary) {
@@ -11,131 +12,91 @@ struct ObjectivesView: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    LabeledContent("Pré-inscrits") {
-                        Text("\(viewModel.preRegistered)")
-                            .font(.geistMonoHeadline)
-                    }
-                    HStack {
-                        Slider(
-                            value: Binding(
-                                get: { Double(viewModel.preRegistered) },
-                                set: { viewModel.preRegistered = Int($0) }
-                            ),
-                            in: 0...500,
-                            step: 5
-                        )
-                        Stepper("", value: $viewModel.preRegistered, in: 0...500)
-                            .labelsHidden()
-                    }
-                }
-                .padding(.vertical, 4)
-                VStack(alignment: .leading, spacing: 8) {
-                    LabeledContent("Objectif bas (%)") {
-                        Text("\(viewModel.rdvTargetLow)%")
-                            .font(.geistMonoHeadline)
-                    }
-                    HStack {
-                        Slider(
-                            value: Binding(
-                                get: { Double(viewModel.rdvTargetLow) },
-                                set: { viewModel.rdvTargetLow = Int($0) }
-                            ),
-                            in: 0...100,
-                            step: 5
-                        )
-                        Stepper("", value: $viewModel.rdvTargetLow, in: 0...100)
-                            .labelsHidden()
-                    }
-                }
-                .padding(.vertical, 4)
-                VStack(alignment: .leading, spacing: 8) {
-                    LabeledContent("Objectif haut (%)") {
-                        Text("\(viewModel.rdvTargetHigh)%")
-                            .font(.geistMonoHeadline)
-                    }
-                    HStack {
-                        Slider(
-                            value: Binding(
-                                get: { Double(viewModel.rdvTargetHigh) },
-                                set: { viewModel.rdvTargetHigh = Int($0) }
-                            ),
-                            in: 0...100,
-                            step: 5
-                        )
-                        Stepper("", value: $viewModel.rdvTargetHigh, in: 0...100)
-                            .labelsHidden()
-                    }
-                }
-                .padding(.vertical, 4)
-            } footer: {
-                Text("L'objectif bas et haut définissent la cible de taux de closing RDV affichée dans le tableau de bord. Laisser à 0 pour ne pas afficher de cible.")
-            }
-            .themedRowBackground()
+        @Bindable var vm = viewModel
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.xl) {
+                ScreenHeading(label: vm.session.name, title: "Objectifs.")
 
-            Section {
-                if appState.programs.isEmpty {
-                    Text("Aucun programme défini pour l'organisation.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(appState.programs) { f in
-                    HStack {
-                        Circle().fill(f.swiftUIColor).frame(width: 8, height: 8)
-                        Text(f.name)
-                            .font(.geistSubheadline)
-                        Spacer()
-                        TextField("0", value: Binding(
-                            get: { viewModel.objective(for: f) },
-                            set: { viewModel.setObjective($0, for: f) }
-                        ), format: .number)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .font(.geistMonoHeadline)
-                        .frame(width: 80)
+                NumberedSection(number: "01", title: "Présence attendue") {
+                    row("Pré-inscrits", nil) {
+                        QuantityControl(value: $vm.preRegistered, range: 0...5000, step: 5)
                     }
                 }
-            } header: {
-                Text("Objectifs par programme")
-            } footer: {
-                Text("Nombre de prospects ciblé par programme. Laisser à 0 si non défini.")
-            }
-            .themedRowBackground()
 
-            Section {
-                Button {
-                    Task { await viewModel.save() }
-                } label: {
-                    if viewModel.isSaving {
-                        ProgressView().tint(.white).frame(maxWidth: .infinity)
-                    } else {
-                        Text("Enregistrer")
-                            .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity)
+                NumberedSection(number: "02", title: "Cible du taux de RDV") {
+                    VStack(alignment: .leading, spacing: Space.l) {
+                        row("Objectif bas", nil) { QuantityControl(value: $vm.rdvTargetLow, range: 0...100, step: 5, suffix: " %") }
+                        row("Objectif haut", nil) { QuantityControl(value: $vm.rdvTargetHigh, range: 0...100, step: 5, suffix: " %") }
                     }
                 }
-                .disabled(viewModel.isSaving || !viewModel.hasChanges)
-                .listRowBackground(Color.accent.opacity(viewModel.hasChanges ? 1 : 0.35))
+
+                NumberedSection(number: "03", title: "Par programme") {
+                    VStack(spacing: 0) {
+                        if appState.programs.isEmpty {
+                            Text("Aucun programme.")
+                                .font(.textSub).foregroundStyle(Color.inkSecondary)
+                        }
+                        ForEach(appState.programs) { program in
+                            HStack(spacing: Space.m) {
+                                RoundedRectangle(cornerRadius: 2).fill(program.swiftUIColor).frame(width: 10, height: 10)
+                                Text(program.name).font(.textSub.weight(.semibold)).foregroundStyle(Color.inkPrimary).lineLimit(1)
+                                Spacer(minLength: Space.s)
+                                QuantityControl(
+                                    value: Binding(get: { vm.objective(for: program) }, set: { vm.setObjective($0, for: program) }),
+                                    range: 0...5000, step: 5
+                                )
+                            }
+                            .padding(.vertical, Space.s)
+                            Rule()
+                        }
+                    }
+                }
             }
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.s)
+            .padding(.bottom, Space.xxl)
         }
-        .themedListBackground()
-        .themedNavigationBar()
-        .contentMargins(.top, 16, for: .scrollContent)
-        .navigationTitle("Objectifs")
+        .background(PaperBackground())
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button {
+                Task {
+                    await viewModel.save()
+                    if viewModel.saveSuccess { toast = Toast(message: "Objectifs enregistrés", style: .success); viewModel.saveSuccess = false }
+                }
+            } label: {
+                ZStack {
+                    Text("Enregistrer").opacity(vm.isSaving ? 0 : 1)
+                    if vm.isSaving { ProgressView().tint(Color.onInk) }
+                }
+            }
+            .buttonStyle(.primary)
+            .disabled(vm.isSaving || !vm.hasChanges)
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.m)
+            .padding(.bottom, Space.s)
+            .background(Color.surfaceBackground.opacity(0.96).ignoresSafeArea(edges: .bottom))
+        }
+        .toast($toast)
+        .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
         .alert("Erreur", isPresented: Binding(
-            get: { viewModel.errorMessage != nil },
-            set: { if !$0 { viewModel.errorMessage = nil } }
+            get: { vm.errorMessage != nil },
+            set: { if !$0 { vm.errorMessage = nil } }
         )) {
-            Button("OK") { viewModel.errorMessage = nil }
+            Button("OK") { vm.errorMessage = nil }
         } message: {
-            Text(viewModel.errorMessage ?? "")
+            Text(vm.errorMessage ?? "")
         }
-        .alert("Sauvegardé", isPresented: $viewModel.saveSuccess) {
-            Button("OK") { viewModel.saveSuccess = false }
-        } message: {
-            Text("Les objectifs ont été mis à jour.")
+    }
+
+    private func row<Control: View>(_ title: String, _ hint: String?, @ViewBuilder control: () -> Control) -> some View {
+        HStack(alignment: .center, spacing: Space.m) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.textHeadline).foregroundStyle(Color.inkPrimary)
+                if let hint { Text(hint).font(.textFootnote).foregroundStyle(Color.inkTertiary) }
+            }
+            Spacer(minLength: Space.s)
+            control()
         }
     }
 }

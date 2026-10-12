@@ -14,7 +14,7 @@ final class ProfileViewModel {
 
     @ObservationIgnored private let service: ProspectServiceProtocol
 
-    init(service: ProspectServiceProtocol = ProspectService.shared) {
+    init(service: ProspectServiceProtocol = ProspectService.current) {
         self.service = service
     }
 

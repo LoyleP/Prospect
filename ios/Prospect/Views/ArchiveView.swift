@@ -1,41 +1,60 @@
 // Views/ArchiveView.swift
-// Archived (soft-deleted) prospects across the organization. Members who can edit may restore them.
+// Archived (soft-deleted) prospects across the organization. Anyone who can edit may restore.
 import SwiftUI
 
 struct ArchiveView: View {
     @State private var viewModel = ArchiveViewModel()
+    @State private var toast: Toast?
     @Environment(AppState.self) private var appState
 
     var body: some View {
-        List(viewModel.prospects) { prospect in
-            ProspectRow(prospect: prospect)
-                .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    if appState.canEditProspects {
-                    Button {
-                        Task { await viewModel.restore(prospect) }
-                    } label: {
-                        Label("Restaurer", systemImage: "arrow.uturn.left")
-                    }
-                    .tint(Color.success)
-                    }
-                }
-                .themedRowBackground()
-        }
-        .themedListBackground()
-        .contentMargins(.top, 16, for: .scrollContent)
-        .navigationTitle("Archive")
-        .navigationBarTitleDisplayMode(.large)
-        .overlay {
+        List {
+            ScreenHeading(label: "Archive", title: "Archive.")
+                .listRowInsets(EdgeInsets(top: Space.l, leading: Space.gutter, bottom: Space.s, trailing: Space.gutter))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
             if viewModel.isLoading && viewModel.prospects.isEmpty {
-                ProgressView()
-            } else if !viewModel.isLoading && viewModel.prospects.isEmpty {
-                ContentUnavailableView(
-                    "Aucun prospect archivé",
-                    systemImage: "archivebox",
-                    description: Text("Les prospects archivés apparaissent ici. Glissez vers la droite pour restaurer.")
+                ForEach(0..<5, id: \.self) { _ in SkeletonRow().registerRow() }
+            } else if viewModel.prospects.isEmpty {
+                EmptyStateView(
+                    title: "Archive vide.",
+                    message: "Glissez un prospect vers la droite pour le restaurer."
                 )
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+            } else {
+                ForEach(viewModel.prospects) { prospect in
+                    ProspectRow(prospect: prospect)
+                        .registerRow()
+                        .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                            if appState.canEditProspects {
+                                Button {
+                                    Haptics.success()
+                                    Task {
+                                        await viewModel.restore(prospect)
+                                        toast = Toast(message: "Prospect restauré", style: .success)
+                                    }
+                                } label: {
+                                    Label("Restaurer", systemImage: "arrow.uturn.left")
+                                }
+                                .tint(Color.success)
+                            }
+                        }
+                }
             }
+
+            Color.clear.frame(height: 90)
+                .listRowInsets(EdgeInsets())
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(PaperBackground())
+        .toolbar(.hidden, for: .navigationBar)
+        .toast($toast)
         .alert("Erreur", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }

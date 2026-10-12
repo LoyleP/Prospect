@@ -14,13 +14,73 @@ final class ProspectFormViewModelTests: XCTestCase {
         vm.nom = "Durand"
         vm.email = "lea@exemple.fr"
         vm.telephone = "+33 6 12 34 56 78"
+        if vm.programId == nil { vm.programId = programs.first?.id }
     }
 
-    func testCreateModeDefaultsToFirstProgram() {
-        let vm = ProspectFormViewModel(mode: .create(session: TestData.session()), programs: programs, service: MockProspectService())
-        XCTAssertEqual(vm.programId, programs[0].id)
+    func testCreateModeStartsWithoutProgramAndRequiresOne() {
+        let session = TestData.session()
+        UserDefaults.standard.removeObject(forKey: "lastProgram.\(session.id.uuidString)")
+        let vm = ProspectFormViewModel(mode: .create(session: session), programs: programs, service: MockProspectService())
+        XCTAssertNil(vm.programId, "no silent default: a wrong programme would skew the stats")
         XCTAssertEqual(vm.statut, .curieux)
+        vm.prenom = "Léa"; vm.nom = "Durand"; vm.email = "lea@exemple.fr"; vm.telephone = "0612345678"
+        XCTAssertTrue(vm.needsProgram)
         XCTAssertFalse(vm.isValid)
+        vm.programId = programs[1].id
+        XCTAssertTrue(vm.isValid)
+    }
+
+    func testCreateModeRemembersLastProgramUsed() async {
+        let session = TestData.session()
+        UserDefaults.standard.removeObject(forKey: "lastProgram.\(session.id.uuidString)")
+        let first = ProspectFormViewModel(mode: .create(session: session), programs: programs, service: MockProspectService())
+        filled(first); first.programId = programs[1].id
+        _ = await first.save()
+        let next = ProspectFormViewModel(mode: .create(session: session), programs: programs, service: MockProspectService())
+        XCTAssertEqual(next.programId, programs[1].id)
+    }
+
+    func testOfflineSaveIsQueuedAndRetriedWithTheSameId() async {
+        let store = PendingProspectStore.shared
+        store.removeAll()
+        defer { store.removeAll() }
+        let service = MockProspectService()
+        service.errorToThrow = APIError.network
+        let session = TestData.session()
+        let vm = ProspectFormViewModel(mode: .create(session: session), programs: programs, authorName: "Hugo", service: service)
+        filled(vm)
+
+        let saved = await vm.save()
+
+        XCTAssertEqual(saved?.id, vm.clientId, "the list shows the queued prospect under its final id")
+        XCTAssertNil(vm.errorMessage, "going offline is not an error")
+        XCTAssertTrue(store.isPending(vm.clientId))
+
+        service.errorToThrow = APIError.network
+        var result = await store.flush(using: service)
+        XCTAssertTrue(result.sent.isEmpty, "still offline: nothing is lost, nothing is sent")
+        XCTAssertEqual(store.items.count, 1)
+
+        service.errorToThrow = nil
+        result = await store.flush(using: service)
+        XCTAssertEqual(result.sent.count, 1)
+        XCTAssertTrue(store.items.isEmpty)
+        XCTAssertEqual(service.createdInputs.last?.input.clientId, vm.clientId)
+    }
+
+    func testRefusedPendingProspectIsDropped() async {
+        let store = PendingProspectStore.shared
+        store.removeAll()
+        defer { store.removeAll() }
+        let service = MockProspectService()
+        let vm = ProspectFormViewModel(mode: .create(session: TestData.session()), programs: programs, service: service)
+        filled(vm)
+        service.errorToThrow = APIError.network
+        _ = await vm.save()
+        service.errorToThrow = APIError(status: 409, code: "event_archived", message: "")
+        let result = await store.flush(using: service)
+        XCTAssertEqual(result.dropped, 1)
+        XCTAssertTrue(store.items.isEmpty)
     }
 
     func testCreateModeWithoutProgramsHasNoProgram() {

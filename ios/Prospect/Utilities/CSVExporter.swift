@@ -45,7 +45,7 @@ enum CSVExporter {
                 p.telephone,
                 programName(p.programId),
                 p.niveauActuel,
-                p.statut,
+                Statut(rawValue: p.statut)?.exportLabel ?? p.statut,
                 p.notes ?? "",
                 p.agentNom,
                 sessionName,

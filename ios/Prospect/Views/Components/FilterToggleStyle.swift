@@ -1,27 +1,21 @@
 // Views/Components/FilterToggleStyle.swift
-// Pill-shaped toggle used in all filter sheets.
+// Toggle styled as a ChoiceChip, for the older filter screens.
 import SwiftUI
 
 struct FilterToggleStyle: ToggleStyle {
     func makeBody(configuration: Configuration) -> some View {
         Button { configuration.isOn.toggle() } label: {
-            HStack(spacing: configuration.isOn ? 8 : 0) {
-                configuration.label
-                    .font(.geistSubheadline)
-                    .lineLimit(1)
-
-                if configuration.isOn {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.geistSubheadline)
+            configuration.label
+                .font(.textSub.weight(.semibold))
+                .lineLimit(1)
+                .foregroundStyle(configuration.isOn ? Color.onInk : Color.inkSecondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 9)
+                .background(configuration.isOn ? Color.inkPrimary : Color.clear, in: RoundedRectangle(cornerRadius: Radius.s + 2, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: Radius.s + 2, style: .continuous)
+                        .strokeBorder(configuration.isOn ? Color.inkPrimary : Color.rule, lineWidth: 1)
                 }
-            }
-            .padding(10)
-            .background(
-                configuration.isOn ? Color.accent : Color.gray800,
-                in: Capsule()
-            )
-            .foregroundStyle(configuration.isOn ? Color.gray900 : Color.gray100)
-            .animation(nil, value: configuration.isOn)
         }
         .buttonStyle(.plain)
     }

@@ -11,7 +11,7 @@ final class ArchiveViewModel {
 
     @ObservationIgnored private let service: ProspectServiceProtocol
 
-    init(service: ProspectServiceProtocol = ProspectService.shared) {
+    init(service: ProspectServiceProtocol = ProspectService.current) {
         self.service = service
     }
 

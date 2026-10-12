@@ -219,6 +219,18 @@ describe("organization with event codes", () => {
     await call("POST", `/orgs/${orgId}/prospects/${created.body.id}/restore`, { token: agent.token });
   });
 
+  it("registering with the same client id twice creates one prospect", async () => {
+    const id = crypto.randomUUID();
+    const before = (await call("GET", `/orgs/${orgId}/events/${event.id}/prospects`, { token: admin.token })).body.length;
+    const first = await call("POST", `/orgs/${orgId}/events/${event.id}/prospects`, { token: agent.token, body: { ...prospectBody(), id } });
+    const retry = await call("POST", `/orgs/${orgId}/events/${event.id}/prospects`, { token: agent.token, body: { ...prospectBody(), id } });
+    expect(first.status).toBe(201);
+    expect(retry.status).toBe(200);
+    expect(retry.body.id).toBe(id);
+    const after = (await call("GET", `/orgs/${orgId}/events/${event.id}/prospects`, { token: admin.token })).body.length;
+    expect(after).toBe(before + 1);
+  });
+
   it("conseillers pick the programs they follow", async () => {
     await call("PATCH", "/me", { token: cf.token, body: { program_ids: [programId, "00000000-0000-4000-8000-000000000000"] } });
     const participants = await call("GET", `/orgs/${orgId}/events/${event.id}/participants`, { token: admin.token });

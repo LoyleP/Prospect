@@ -46,12 +46,13 @@ targets:
         APIBaseURL: $(API_BASE_URL)
         NSSupportsLiveActivities: true
         UILaunchScreen:
-          UIColorName: ""
+          UIColorName: LaunchBackground
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
+        NSLocalNetworkUsageDescription: Permet de se connecter au serveur de développement sur votre réseau local.
         # Lets Debug builds talk to a local API (npm run dev → http://localhost:3000).
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
