@@ -9,7 +9,9 @@ struct OnboardingAnimation: View {
     @State private var model: RiveViewModel?
 
     var body: some View {
-        Group {
+        // The clear base matters: an empty Group never appears, so `onAppear` would never create the model.
+        ZStack {
+            Color.clear
             if let model { model.view() }
         }
         .accessibilityHidden(true)
