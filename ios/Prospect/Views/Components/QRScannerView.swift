@@ -49,6 +49,8 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
         message.frame = view.bounds.insetBy(dx: 32, dy: 0)
     }
 
+    deinit { if session.isRunning { session.stopRunning() } }
+
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         if session.isRunning { session.stopRunning() }
@@ -82,7 +84,8 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput objects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard !found, let code = (objects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
         found = true
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
         onCode(code)
+        // A wrong code must not freeze the camera: allow scanning again shortly after.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.found = false }
     }
 }

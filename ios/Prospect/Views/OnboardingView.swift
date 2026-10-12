@@ -14,12 +14,19 @@ struct OnboardingView: View {
     @State private var customLabel = ""
     @State private var invitation: Invitation?
     @State private var pasted = ""
-    @State private var showScanner = false
     @State private var errorText: String?
     @FocusState private var focused: Field?
     private enum Field { case name, custom, paste }
 
     private static let labels = ["Événement", "JPO", "Salon", "Forum", "Portes ouvertes"]
+    /// A plain slide: the next step comes in from the trailing edge and the current one leaves by the leading edge.
+    /// Going back reverses both, so the path is always the same one walked backwards.
+    private var slide: AnyTransition {
+        forward
+            ? .asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading))
+            : .asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing))
+    }
+
     private var cleanName: String { name.trimmingCharacters(in: .whitespaces) }
     private var cleanLabel: String {
         let custom = customLabel.trimmingCharacters(in: .whitespaces)
@@ -33,11 +40,12 @@ struct OnboardingView: View {
                 header
                 ZStack(alignment: .top) {
                     switch step {
-                    case .choose:   choose.transition(.axis(forward: forward))
-                    case .organize: organize.transition(.axis(forward: forward))
-                    case .join:     join.transition(.axis(forward: forward))
+                    case .choose:   choose.transition(slide)
+                    case .organize: organize.transition(slide)
+                    case .join:     join.transition(slide)
                     }
                 }
+                .clipped()
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Space.l)
@@ -48,7 +56,6 @@ struct OnboardingView: View {
         .animation(.curve(Motion.micro), value: errorText)
         .onAppear(perform: applyIntent)
         .onChange(of: appState.pendingInvitation) { _, _ in applyIntent() }
-        .sheet(isPresented: $showScanner) { scanner }
     }
 
     // MARK: Header
@@ -79,18 +86,16 @@ struct OnboardingView: View {
 
     private var choose: some View {
         VStack(spacing: Space.s) {
-            choiceRow(icon: "flag", title: "Organiser") {
-                go(.organize); focused = .name
-            }
-            .accessibilityIdentifier("organize")
-            .appears(0)
-            choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre") {
-                go(.join)
-            }
-            .accessibilityIdentifier("join")
-            .appears(1)
+            Spacer(minLength: 0)
+            choiceRow(icon: "flag", title: "Organiser") { go(.organize) }
+                .accessibilityIdentifier("organize")
+                .appears(0)
+            choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre") { go(.join) }
+                .accessibilityIdentifier("join")
+                .appears(1)
         }
-        .padding(.top, Space.xxl)
+        .padding(.bottom, Space.l)
+        .frame(maxHeight: .infinity)
     }
 
     private func choiceRow(icon: String, title: String, action: @escaping () -> Void) -> some View {
@@ -118,15 +123,20 @@ struct OnboardingView: View {
     // MARK: Organize
 
     private var organize: some View {
-        VStack(alignment: .leading, spacing: Space.l) {
+        VStack(alignment: .leading, spacing: Space.xl) {
             Text("Organiser").font(.displayL).foregroundStyle(Color.inkPrimary)
-            LabeledField(title: "Votre nom", isFocused: focused == .name) {
-                TextField("Camille Martin", text: $name)
-                    .textContentType(.name)
-                    .textInputAutocapitalization(.words)
-                    .focused($focused, equals: .name)
-                    .accessibilityIdentifier("organizerName")
-            }
+
+            TextField("", text: $name, prompt: Text("Votre nom").foregroundStyle(Color.inkTertiary))
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(Color.inkPrimary)
+                .tint(Color.accent)
+                .textContentType(.name)
+                .textInputAutocapitalization(.words)
+                .focused($focused, equals: .name)
+                .submitLabel(.continue)
+                .onSubmit(finishOrganizing)
+                .accessibilityIdentifier("organizerName")
+
             VStack(alignment: .leading, spacing: Space.s) {
                 Text("Événements").font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
                 PillFlowLayout(spacing: Space.s) {
@@ -143,15 +153,18 @@ struct OnboardingView: View {
                 }
             }
             Spacer(minLength: Space.l)
-            Button("Continuer") {
-                appState.startOrganizing(name: cleanName, eventLabel: cleanLabel)
-            }
-            .buttonStyle(.primary)
-            .disabled(cleanName.isEmpty)
-            .accessibilityIdentifier("continueOrganize")
-            .padding(.bottom, Space.s)
+            Button("Continuer", action: finishOrganizing)
+                .buttonStyle(.primary)
+                .disabled(cleanName.isEmpty)
+                .accessibilityIdentifier("continueOrganize")
+                .padding(.bottom, Space.s)
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    private func finishOrganizing() {
+        guard !cleanName.isEmpty else { return }
+        appState.startOrganizing(name: cleanName, eventLabel: cleanLabel)
     }
 
     // MARK: Join
@@ -159,38 +172,84 @@ struct OnboardingView: View {
     private var join: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             Text("Rejoindre").font(.displayL).foregroundStyle(Color.inkPrimary)
-            if let invitation {
-                eventCard(invitation).transition(.rise)
-                LabeledField(title: "Votre nom", isFocused: focused == .name) {
-                    TextField("Hugo Petit", text: $name)
-                        .textContentType(.name)
-                        .textInputAutocapitalization(.words)
-                        .focused($focused, equals: .name)
-                        .accessibilityIdentifier("agentName")
+            ZStack(alignment: .top) {
+                if let invitation {
+                    VStack(alignment: .leading, spacing: Space.l) {
+                        eventCard(invitation)
+                        TextField("", text: $name, prompt: Text("Votre nom").foregroundStyle(Color.inkTertiary))
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(Color.inkPrimary)
+                            .tint(Color.accent)
+                            .textContentType(.name)
+                            .textInputAutocapitalization(.words)
+                            .focused($focused, equals: .name)
+                            .submitLabel(.join)
+                            .onSubmit { confirmJoin(invitation) }
+                            .accessibilityIdentifier("agentName")
+                        Spacer(minLength: Space.l)
+                        Button("Rejoindre") { confirmJoin(invitation) }
+                            .buttonStyle(.primary)
+                            .disabled(cleanName.isEmpty)
+                            .accessibilityIdentifier("confirmJoin")
+                            .padding(.bottom, Space.s)
+                    }
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .transition(slide)
+                } else {
+                    VStack(alignment: .leading, spacing: Space.m) {
+                        viewfinder
+                        pasteField
+                        if let errorText { InlineError(text: errorText).transition(.drop) }
+                    }
+                    .transition(slide)
                 }
-                Spacer(minLength: Space.l)
-                Button("Rejoindre") { confirmJoin(invitation) }
-                    .buttonStyle(.primary)
-                    .disabled(cleanName.isEmpty)
-                    .accessibilityIdentifier("confirmJoin")
-                    .padding(.bottom, Space.s)
-            } else {
-                Button { showScanner = true } label: {
-                    Label("Scanner", systemImage: "qrcode.viewfinder")
-                }
-                .buttonStyle(.primary)
-                .accessibilityIdentifier("scan")
-                LabeledField(title: "Lien", isFocused: focused == .paste, hasError: errorText != nil) {
-                    TextField("prospect://join?…", text: $pasted)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
-                        .focused($focused, equals: .paste)
-                        .onChange(of: pasted) { _, text in tryInvitation(text) }
-                }
-                if let errorText { InlineError(text: errorText).transition(.drop) }
             }
+            .clipped()
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
+    }
+
+    /// The camera is the screen: a dashed frame over the live view.
+    private var viewfinder: some View {
+        ZStack {
+            QRScannerView { code in tryInvitation(code, fromScan: true) }
+            RoundedRectangle(cornerRadius: Radius.xl, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.55), style: StrokeStyle(lineWidth: 2, dash: [8, 8]))
+                .padding(36)
+                .allowsHitTesting(false)
+        }
+        .frame(height: 340)
+        .background(Color.surfaceCard)
+        .clipShape(RoundedRectangle(cornerRadius: Radius.xl, style: .continuous))
+    }
+
+    private var pasteField: some View {
+        HStack(spacing: Space.s) {
+            Image(systemName: "link").foregroundStyle(Color.inkTertiary)
+            TextField("", text: $pasted, prompt: Text("prospect://…").foregroundStyle(Color.inkTertiary))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .focused($focused, equals: .paste)
+                .onChange(of: pasted) { _, text in tryInvitation(text) }
+            Button {
+                Haptics.tap()
+                if let text = UIPasteboard.general.string { pasted = text }
+            } label: {
+                Image(systemName: "doc.on.clipboard")
+                    .foregroundStyle(Color.inkSecondary)
+                    .frame(width: 44, height: 55)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Coller")
+        }
+        .padding(.leading, Space.l)
+        .padding(.trailing, Space.xs)
+        .frame(minHeight: 55)
+        .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Radius.l, style: .continuous)
+                .strokeBorder(errorText != nil ? Color.error : (focused == .paste ? Color.accent.opacity(0.7) : Color.clear), lineWidth: 1.5)
+        }
     }
 
     private func eventCard(_ i: Invitation) -> some View {
@@ -201,28 +260,6 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Space.l)
         .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-    }
-
-    private var scanner: some View {
-        ZStack(alignment: .topTrailing) {
-            QRScannerView { code in
-                showScanner = false
-                tryInvitation(code, fromScan: true)
-            }
-            .ignoresSafeArea()
-            Button { showScanner = false } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 44, height: 44)
-                    .background(.black.opacity(0.5), in: Circle())
-                    .frame(width: 55, height: 55)
-                    .contentShape(Rectangle())
-            }
-            .padding(Space.m)
-            .accessibilityLabel("Fermer")
-        }
-        .presentationDragIndicator(.visible)
     }
 
     // MARK: Actions
@@ -249,12 +286,20 @@ struct OnboardingView: View {
 
     private func go(_ next: Step) {
         forward = next.rawValue > step.rawValue
+        focused = nil
+        Haptics.selection()
         withAnimation(.curve(Motion.standard)) { step = next }
+        // Bring the keyboard up after the slide, not during it.
+        if next == .organize {
+            Task { try? await Task.sleep(for: .milliseconds(Int(Motion.standard * 1000))); focused = .name }
+        }
     }
 
     private func tryInvitation(_ text: String, fromScan: Bool = false) {
         guard !text.isEmpty else { errorText = nil; return }
         if let found = Invitation(text: text) {
+            forward = true
+            Haptics.success()
             invitation = found
             errorText = nil
             focused = .name
