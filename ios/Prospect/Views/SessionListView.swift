@@ -28,7 +28,7 @@ struct SessionListView: View {
             } else if let selected = vm.selectedSummary {
                 ProspectListView(
                     summary: selected,
-                    isReadOnly: selected.statutSession == .termine || selected.isArchived,
+                    isReadOnly: selected.statutSession == .termine || selected.isArchived || appState.isConseiller,
                     onShowProfile: { showProfile = true },
                     onShowEvents: { showEvents = true },
                     eventActions: appState.isAdmin ? EventActions(

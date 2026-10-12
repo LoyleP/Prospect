@@ -46,8 +46,15 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_prospect-sync._tcp</string>
+		<string>_prospect-sync._udp</string>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>La caméra sert à scanner l'invitation de l'organisateur.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Prospect échange les prospects directement entre les téléphones proches, sans serveur.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>

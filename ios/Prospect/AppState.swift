@@ -51,7 +51,9 @@ final class AppState {
     /// The organizer: creates events, hands out invitations, collects what agents send.
     var isAdmin: Bool { role == .admin }
     var canExport: Bool { isAdmin }
-    var canEditProspects: Bool { true }
+    /// A conseiller only reads what the organizer sends: no recording, no editing.
+    var isConseiller: Bool { role == .conseillerFormation }
+    var canEditProspects: Bool { !isConseiller }
 
     /// The person's display name, written on every prospect they record.
     var agentNom: String { currentOrganization?.displayName ?? "" }
@@ -90,9 +92,9 @@ final class AppState {
         refresh()
     }
 
-    /// Onboarding, agent side: the name, then the invitation that was scanned or opened.
-    func startAsAgent(name: String, invitation: Invitation) throws {
-        store.write { $0.identity = StoredIdentity(displayName: name, role: .agent, eventLabel: invitation.eventLabel) }
+    /// Onboarding, agent or conseiller side: the name, then the invitation that was scanned or opened.
+    func startAsAgent(name: String, invitation: Invitation, role: Role = .agent) throws {
+        store.write { $0.identity = StoredIdentity(displayName: name, role: role, eventLabel: invitation.eventLabel) }
         try exchange.join(invitation)
         pendingInvitation = nil
         refresh()

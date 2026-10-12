@@ -13,6 +13,8 @@ struct OnboardingView: View {
     @State private var eventLabel = "Événement"
     @State private var customLabel = ""
     @State private var invitation: Invitation?
+    /// Who is joining: an agent records prospects, a conseiller receives what the organizer shares.
+    @State private var joinRole: Role = .agent
     @State private var pasted = ""
     @State private var errorText: String?
     @FocusState private var focused: Field?
@@ -89,12 +91,20 @@ struct OnboardingView: View {
             OnboardingAnimation()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.bottom, Space.s)
+            VStack(alignment: .leading, spacing: Space.xs) {
+                Text("Collectez vos prospects").font(.displayM).foregroundStyle(Color.inkPrimary)
+                Text("Sans compte : tout reste sur vos téléphones")
+                    .font(.textBody).foregroundStyle(Color.inkSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, Space.m)
+            .appears(0)
             choiceRow(icon: "flag", title: "Organiser") { go(.organize) }
                 .accessibilityIdentifier("organize")
-                .appears(0)
+                .appears(1)
             choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre") { go(.join) }
                 .accessibilityIdentifier("join")
-                .appears(1)
+                .appears(2)
         }
         .padding(.bottom, Space.l)
         .frame(maxHeight: .infinity)
@@ -178,6 +188,10 @@ struct OnboardingView: View {
                 if let invitation {
                     VStack(alignment: .leading, spacing: Space.l) {
                         eventCard(invitation)
+                        HStack(spacing: Space.s) {
+                            ChoiceChip(title: "Agent", isSelected: joinRole == .agent) { joinRole = .agent }
+                            ChoiceChip(title: "Conseiller", isSelected: joinRole == .conseillerFormation) { joinRole = .conseillerFormation }
+                        }
                         TextField("", text: $name, prompt: Text("Votre nom").foregroundStyle(Color.inkTertiary))
                             .font(.system(size: 28, weight: .semibold))
                             .foregroundStyle(Color.inkPrimary)
@@ -314,7 +328,7 @@ struct OnboardingView: View {
 
     private func confirmJoin(_ invitation: Invitation) {
         do {
-            try appState.startAsAgent(name: cleanName, invitation: invitation)
+            try appState.startAsAgent(name: cleanName, invitation: invitation, role: joinRole)
         } catch {
             errorText = error.localizedDescription
         }

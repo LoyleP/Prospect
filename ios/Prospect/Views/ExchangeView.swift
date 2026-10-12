@@ -1,6 +1,7 @@
 // Views/ExchangeView.swift
-// Last tab. Organizer: "Collecte" (invitation, files received from agents, duplicates, end the event).
-// Agent: "Envoi" (send the prospects recorded on this phone to the organizer, encrypted).
+// Last tab. Organizer: "Collecte" (invitation, receive from nearby phones, duplicates, end the event).
+// Agent: "Envoi" (send the prospects recorded on this phone to the organizer's phone, nearby, encrypted).
+// Conseiller: "Réception" (ask the organizer's phone for the event's data).
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -10,18 +11,16 @@ struct ExchangeView: View {
     @State private var showImporter = false
     @State private var showDuplicates = false
     @State private var confirmEnd = false
-    @State private var shareItem: ShareItem?
     @State private var toast: Toast?
 
-    private struct ShareItem: Identifiable { let id = UUID(); let url: URL; let count: Int }
     private static let handoverType = UTType("com.flow.prospect.handover") ?? .data
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                heading
+                header
                 if let event = vm.selected {
-                    if appState.isAdmin { organizer(event) } else { agent(event) }
+                    if appState.isAdmin { organizer(event) } else if appState.isConseiller { conseiller(event) } else { agent(event) }
                 } else {
                     empty
                 }
@@ -41,22 +40,13 @@ struct ExchangeView: View {
         .onChange(of: vm.errorMessage) { _, text in
             if let text { toast = Toast(message: text, style: .error); vm.errorMessage = nil }
         }
+        .onChange(of: vm.client.state) { _, state in vm.clientStateChanged(state) }
         .fileImporter(isPresented: $showImporter, allowedContentTypes: [Self.handoverType, .data]) { result in
             if case .success(let url) = result { vm.importFile(url) }
         }
         .sheet(isPresented: $showDuplicates) {
             DuplicatesView(groups: vm.duplicateGroups) { vm.archiveDuplicate($0) }
                 .presentationBackground(Color.surfaceBackground)
-        }
-        .sheet(item: $shareItem) { item in
-            FileShareSheet(url: item.url) { completed in
-                if completed {
-                    vm.markSent(count: item.count)
-                    Haptics.success()
-                    toast = Toast(message: "Envoyé", style: .success)
-                }
-            }
-            .presentationDetents([.medium, .large])
         }
         .confirmationDialog("Terminer cet événement ?", isPresented: $confirmEnd, titleVisibility: .visible) {
             Button("Terminer") { vm.finishEvent() }
@@ -66,9 +56,11 @@ struct ExchangeView: View {
 
     // MARK: Header
 
-    private var heading: some View {
+    private var heading: String { appState.isAdmin ? "Collecte" : (appState.isConseiller ? "Réception" : "Envoi") }
+
+    private var header: some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            ScreenHeading(label: appState.isAdmin ? "Collecte" : "Envoi", title: appState.isAdmin ? "Collecte" : "Envoi")
+            ScreenHeading(label: heading, title: heading)
             if vm.events.count > 1, let selected = vm.selected {
                 Menu {
                     ForEach(vm.events) { e in
@@ -106,6 +98,8 @@ struct ExchangeView: View {
         if let url = vm.invitationURL {
             InvitationCard(url: url, eventName: event.name)
         }
+
+        receiving
 
         VStack(alignment: .leading, spacing: Space.m) {
             if !event.receipts.isEmpty {
@@ -206,15 +200,124 @@ struct ExchangeView: View {
         .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
 
         VStack(alignment: .leading, spacing: Space.s) {
-            Button {
-                if let file = vm.makeHandover() { shareItem = ShareItem(url: file.url, count: file.count) }
-            } label: {
-                Label(event.organizerName, systemImage: "paperplane")
+            Button { vm.sendNearby() } label: {
+                if vm.client.isBusy {
+                    HStack(spacing: Space.s) { ProgressView().tint(Color.onAccent); Text(busyText) }
+                } else {
+                    Label(event.organizerName, systemImage: "paperplane")
+                }
             }
             .buttonStyle(.primary)
-            .disabled(vm.mineCount == 0)
+            .disabled(vm.mineCount == 0 || vm.client.isBusy)
             .accessibilityIdentifier("sendHandover")
         }
+    }
+
+    // MARK: Conseiller
+
+    @ViewBuilder
+    private func conseiller(_ event: StoredEvent) -> some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            Text("\(event.activeProspects.count)").font(.numeral(56)).foregroundStyle(Color.inkPrimary)
+                .contentTransition(.numericText())
+                .animation(.curve(Motion.standard), value: event.activeProspects.count)
+            Text("prospect\(event.activeProspects.count > 1 ? "s" : "")").font(.textSub).foregroundStyle(Color.inkSecondary)
+            if let received = event.lastSentAt {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
+                    Text(Self.relative(received)).foregroundStyle(Color.inkSecondary)
+                }
+                .font(.textFootnote)
+                .padding(.top, Space.s)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(Space.l)
+        .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+
+        Button { vm.receiveNearby() } label: {
+            if vm.client.isBusy {
+                HStack(spacing: Space.s) { ProgressView().tint(Color.onAccent); Text(busyText) }
+            } else {
+                Label(event.organizerName, systemImage: "arrow.down.circle")
+            }
+        }
+        .buttonStyle(.primary)
+        .disabled(vm.client.isBusy)
+        .accessibilityIdentifier("receiveEventData")
+    }
+
+    private var busyText: String {
+        switch vm.client.state {
+        case .waiting: return appState.isConseiller ? "En attente de l'organisateur" : "Connexion"
+        case .sending: return "Envoi"
+        default: return "Recherche"
+        }
+    }
+
+    // MARK: Organizer: receiving
+
+    @ViewBuilder
+    private var receiving: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            if vm.host.isRunning {
+                HStack(spacing: Space.m) {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.system(size: 18, weight: .medium))
+                        .foregroundStyle(Color.accent)
+                        .symbolEffect(.variableColor.iterative, options: .repeating)
+                    Text("À l'écoute").font(.textHeadline).foregroundStyle(Color.inkPrimary)
+                    Spacer()
+                    Button("Arrêter") { Haptics.tap(); vm.stopReceiving() }
+                        .font(.textBody.weight(.medium))
+                        .foregroundStyle(Color.inkSecondary)
+                        .frame(minWidth: 55, minHeight: 55)
+                        .accessibilityIdentifier("stopReceiving")
+                }
+                .padding(.leading, Space.l)
+                .padding(.trailing, Space.s)
+                .frame(minHeight: 64)
+                .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+
+                ForEach(vm.host.requests) { request in
+                    HStack(spacing: Space.m) {
+                        Monogram(name: request.name, size: 40)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(request.name).font(.textBody).foregroundStyle(Color.inkPrimary)
+                            Text("Conseiller").font(.textFootnote).foregroundStyle(Color.inkSecondary)
+                        }
+                        Spacer()
+                        Button { Haptics.success(); vm.host.decline(request) } label: {
+                            Image(systemName: "xmark").font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.inkSecondary)
+                                .frame(width: 44, height: 44)
+                                .background(Color.surfaceCard2, in: Circle())
+                        }
+                        .accessibilityLabel("Refuser")
+                        Button { Haptics.success(); vm.host.approve(request) } label: {
+                            Image(systemName: "checkmark").font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(Color.onAccent)
+                                .frame(width: 44, height: 44)
+                                .background(Color.accent, in: Circle())
+                        }
+                        .accessibilityLabel("Envoyer les données")
+                        .accessibilityIdentifier("approveConseiller")
+                    }
+                    .padding(.horizontal, Space.l)
+                    .frame(minHeight: 64)
+                    .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+                    .transition(.rise)
+                }
+            } else {
+                Button { vm.startReceiving() } label: {
+                    Label("Recevoir", systemImage: "dot.radiowaves.left.and.right")
+                }
+                .buttonStyle(.primary)
+                .accessibilityIdentifier("startReceiving")
+            }
+        }
+        .animation(.curve(Motion.standard), value: vm.host.isRunning)
+        .animation(.curve(Motion.standard), value: vm.host.requests)
     }
 
     // MARK: Formatting

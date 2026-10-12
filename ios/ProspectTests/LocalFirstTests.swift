@@ -238,4 +238,48 @@ final class LocalFirstTests: XCTestCase {
         let agentEvents = try await agent.service.fetchSessionSummaries()
         XCTAssertTrue(agentEvents.first?.session.importsComplete == true)
     }
+
+    // MARK: Nearby transfer
+
+    func testNearbyMessagesFrameAndUnframe() throws {
+        let payload = Data("bonjour".utf8)
+        let (kind, body) = try XCTUnwrap(Nearby.unframe(Nearby.frame(.handover, payload)))
+        XCTAssertEqual(kind, .handover)
+        XCTAssertEqual(body, payload)
+        XCTAssertNil(Nearby.unframe(Data()), "an empty message is ignored")
+        XCTAssertNil(Nearby.unframe(Data([99, 1, 2])), "an unknown kind is ignored")
+
+        let ack = Nearby.Ack(ok: true, added: 3, updated: 1)
+        XCTAssertEqual(try JSONDecoder().decode(Nearby.Ack.self, from: JSONEncoder().encode(ack)), ack)
+        XCTAssertEqual(Nearby.peerID("   ").displayName, "Prospect")
+        XCTAssertLessThanOrEqual(Nearby.peerID(String(repeating: "é", count: 100)).displayName.utf8.count, 63)
+    }
+
+    func testOrganizerSendsEventDataToAConseiller() async throws {
+        let organizer = phone(role: .admin, name: "Camille")
+        let event = try await organizer.service.createSession(name: "Salon", date: Date())
+        let keep = try await organizer.service.createProspect(sessionId: event.id, input("Camille", "Orga"))
+        let gone = try await organizer.service.createProspect(sessionId: event.id, input("Zoé", "Effacée", phone: "0699999999"))
+        try await organizer.service.archiveProspect(id: gone.id)
+
+        let conseiller = phone(role: .conseillerFormation, name: "Inès")
+        try conseiller.exchange.join(try XCTUnwrap(Invitation(url: try organizer.exchange.invitation(for: event.id).url)))
+
+        // Only the organizer can produce it, and an organizer cannot "receive" one.
+        let data = try organizer.exchange.eventData(for: event.id)
+        XCTAssertThrowsError(try conseiller.exchange.eventData(for: event.id)) { XCTAssertEqual($0 as? ExchangeError, .notOrganizer) }
+        XCTAssertThrowsError(try organizer.exchange.receiveEventData(data)) { XCTAssertEqual($0 as? ExchangeError, .notOrganizer) }
+
+        // The conseiller gets the active prospects only, and receiving again replaces them.
+        XCTAssertEqual(try conseiller.exchange.receiveEventData(data), 1)
+        XCTAssertEqual(try conseiller.exchange.receiveEventData(data), 1)
+        let received = try await conseiller.service.fetchProspects(sessionId: event.id)
+        XCTAssertEqual(received.map(\.id), [keep.id])
+        XCTAssertNotNil(conseiller.store.read { $0.events.first?.lastSentAt })
+
+        // Garbage and data for an event this phone never joined are refused.
+        XCTAssertThrowsError(try conseiller.exchange.receiveEventData(Data("nope".utf8))) { XCTAssertEqual($0 as? ExchangeError, .notAnEventData) }
+        let stranger = phone(role: .conseillerFormation, name: "Autre")
+        XCTAssertThrowsError(try stranger.exchange.receiveEventData(data)) { XCTAssertEqual($0 as? ExchangeError, .unknownEvent) }
+    }
 }

@@ -100,7 +100,7 @@ struct ProfileView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Stamp(text: appState.isAdmin ? "Organisateur" : "Agent", color: appState.isAdmin ? .adminAccent : .info)
+                Stamp(text: appState.isAdmin ? "Organisateur" : (appState.isConseiller ? "Conseiller" : "Agent"), color: appState.isAdmin ? .adminAccent : .info)
             }
             Spacer(minLength: 40)
         }

@@ -5,7 +5,7 @@ import CryptoKit
 import Foundation
 
 enum ExchangeError: LocalizedError, Equatable {
-    case noIdentity, notOrganizer, unknownEvent, notAnInvitation, notAHandover, wrongEvent, cannotDecrypt, keyMissing
+    case noIdentity, notOrganizer, unknownEvent, notAnInvitation, notAHandover, notAnEventData, wrongEvent, cannotDecrypt, keyMissing
 
     var errorDescription: String? {
         switch self {
@@ -14,6 +14,7 @@ enum ExchangeError: LocalizedError, Equatable {
         case .unknownEvent:    return "Cet événement n'existe pas sur ce téléphone."
         case .notAnInvitation: return "Ce code n'est pas une invitation Prospect."
         case .notAHandover:    return "Ce fichier n'est pas un envoi Prospect."
+        case .notAnEventData:  return "Ces données ne sont pas valides."
         case .wrongEvent:      return "Ce fichier appartient à un autre événement."
         case .cannotDecrypt:   return "Impossible de lire ce fichier : il n'est pas destiné à cet appareil."
         case .keyMissing:      return "La clé de cet événement est introuvable sur ce téléphone."
@@ -158,4 +159,48 @@ final class EventExchange: @unchecked Sendable {
         }
         return ImportOutcome(eventName: event.name, agentName: payload.agentName, count: payload.prospects.count, merge: merge)
     }
+
+    // MARK: Conseiller (organizer → conseiller)
+
+    /// What the organizer hands a conseiller: every active prospect of the event, as it stands now.
+    struct EventData: Codable, Equatable, Sendable {
+        var eventId: UUID
+        var sentAt: Date
+        var prospects: [Prospect]
+    }
+
+    func eventData(for eventId: UUID, now: Date = Date()) throws -> Data {
+        let payload = try store.read { state -> EventData in
+            guard let e = state.events.first(where: { $0.id == eventId }) else { throw ExchangeError.unknownEvent }
+            guard e.isOrganizer else { throw ExchangeError.notOrganizer }
+            return EventData(eventId: e.id, sentAt: now, prospects: e.activeProspects)
+        }
+        return try Self.encoder.encode(payload)
+    }
+
+    /// Conseiller side: replaces the event's prospects with what the organizer sent. Returns how many there are.
+    /// `lastSentAt` / `lastSentCount` record the reception, since a conseiller never sends anything.
+    @discardableResult
+    func receiveEventData(_ data: Data, now: Date = Date()) throws -> Int {
+        guard let payload = try? Self.decoder.decode(EventData.self, from: data) else { throw ExchangeError.notAnEventData }
+        return try store.write { state in
+            guard let i = state.events.firstIndex(where: { $0.id == payload.eventId }) else { throw ExchangeError.unknownEvent }
+            guard !state.events[i].isOrganizer else { throw ExchangeError.notOrganizer }
+            state.events[i].prospects = payload.prospects
+            state.events[i].lastSentAt = now
+            state.events[i].lastSentCount = payload.prospects.count
+            return payload.prospects.count
+        }
+    }
+
+    private static let encoder: JSONEncoder = {
+        let e = JSONEncoder()
+        e.dateEncodingStrategy = .iso8601
+        return e
+    }()
+    private static let decoder: JSONDecoder = {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        return d
+    }()
 }

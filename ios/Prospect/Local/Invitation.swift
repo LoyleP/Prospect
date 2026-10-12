@@ -84,7 +84,7 @@ struct Invitation: Equatable, Sendable {
         self.init(url: url)
     }
 
-    private static func short(_ id: UUID) -> String {
+    static func short(_ id: UUID) -> String {
         base64URL(withUnsafeBytes(of: id.uuid) { Data($0) })
     }
 
