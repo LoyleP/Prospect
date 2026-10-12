@@ -25,8 +25,22 @@ final class AppState {
     var programs: [Program] = []
     var previewRole: Role?
     var loadError: String?
+    var selectedTab: MainTab = .prospects
+    /// Which login tab to open first (set by the debug menu).
+    var loginIntent: LoginIntent?
+    /// Bumped to rebuild the whole UI tree (new view models) when the backend is swapped.
+    var epoch = 0
 
-    @ObservationIgnored private let service: ProspectServiceProtocol
+    /// A screen to open from outside its view (used by the debug menu).
+    var route: Route?
+
+    enum Route: Equatable { case newProspect, editProspect, filters, events, newEvent, profile, eventAccess }
+    enum MainTab: Hashable { case prospects, dashboard, archive, team }
+    enum LoginIntent: Equatable { case join, admin, createAccount }
+
+    /// Set only by tests and previews; otherwise the live (or demo) service is used.
+    @ObservationIgnored private let injectedService: ProspectServiceProtocol?
+    @ObservationIgnored private var service: ProspectServiceProtocol { injectedService ?? ProspectService.current }
     @ObservationIgnored private let defaults: UserDefaults
     @ObservationIgnored private var expiryObserver: NSObjectProtocol?
     private static let lastOrganizationKey = "lastOrganizationId"
@@ -58,8 +72,8 @@ final class AppState {
 
     // MARK: - Lifecycle
 
-    init(service: ProspectServiceProtocol = ProspectService.shared, defaults: UserDefaults = .standard) {
-        self.service = service
+    init(service: ProspectServiceProtocol? = nil, defaults: UserDefaults = .standard) {
+        self.injectedService = service
         self.defaults = defaults
         self.phase = AuthService.shared.isSignedIn ? .loading : .signedOut
         expiryObserver = NotificationCenter.default.addObserver(
@@ -160,15 +174,37 @@ final class AppState {
         phase = .signedOut
     }
 
+    // MARK: - Demo backend
+
+    /// Swaps the whole app onto an offline demo backend (or back to the live API with `nil`)
+    /// and restarts from the state that backend describes.
+    func useDemo(_ demo: DemoProspectService?, loginIntent: LoginIntent? = nil) async {
+        DemoMode.active = demo
+        ProspectService.override = demo
+        resetToSignedOut()
+        self.loginIntent = loginIntent
+        selectedTab = .prospects
+        epoch += 1
+        #if DEBUG
+        DebugOverlay.shared.refreshBadge()
+        #endif
+        if AuthService.shared.isSignedIn {
+            phase = .loading
+            await bootstrap()
+        }
+    }
+
     // MARK: - Previews
 
-    /// Preview-only state that never touches the network or the Keychain.
+    /// Preview-only state backed by seeded demo data; never touches the network or the Keychain.
     static func preview(nom: String = "Camille Martin", role: Role = .admin, eventLabel: String = "Salon") -> AppState {
-        let s = AppState(service: PreviewProspectService())
-        let org = Organization(id: UUID(), name: "Organisation démo", eventLabel: eventLabel, role: role, displayName: nom, programIds: [], adminCode: role == .admin ? "K7M2QX" : nil)
+        let identity: DemoProspectService.Identity = role == .admin ? .admin(name: nom) : .participant(role: role, name: nom)
+        let demo = DemoProspectService(.init(identity: identity, eventLabel: eventLabel))
+        let s = AppState(service: demo)
+        let org = Organization(id: DemoProspectService.orgId, name: "Atelier Horizon", eventLabel: eventLabel, role: role, displayName: nom, programIds: [], adminCode: role == .admin ? "K7M2QX" : nil)
         s.organizations = [org]
         s.currentOrganization = org
-        s.programs = PreviewProspectService.programs
+        s.programs = demo.previewPrograms
         s.phase = .ready
         return s
     }

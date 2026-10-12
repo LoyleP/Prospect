@@ -40,7 +40,7 @@ enum DashboardCSVExporter {
             row("PAR STATUT", "Prospects")
         ]
         for item in byStatut {
-            rows.append(row(item.statut.rawValue, "\(item.count)"))
+            rows.append(row(item.statut.exportLabel, "\(item.count)"))
         }
 
         rows += [

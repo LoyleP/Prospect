@@ -30,7 +30,7 @@ final class ObjectivesViewModel {
 
     @ObservationIgnored private let service: ProspectServiceProtocol
 
-    init(session: SessionSummary, service: ProspectServiceProtocol = ProspectService.shared) {
+    init(session: SessionSummary, service: ProspectServiceProtocol = ProspectService.current) {
         self.session            = session
         self.service            = service
         preRegistered           = session.preRegistered

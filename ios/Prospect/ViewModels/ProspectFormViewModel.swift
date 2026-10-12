@@ -24,15 +24,22 @@ final class ProspectFormViewModel {
     var errorMessage: String?
 
     let mode: ProspectFormMode
+    /// Identifies this form's prospect. A retry after a network drop reuses it, so nothing is duplicated.
+    @ObservationIgnored let clientId = UUID()
+    @ObservationIgnored private let authorName: String
     let programs: [Program]
     @ObservationIgnored private let service: ProspectServiceProtocol
 
-    init(mode: ProspectFormMode, programs: [Program], service: ProspectServiceProtocol = ProspectService.shared) {
+    init(mode: ProspectFormMode, programs: [Program], authorName: String = "", service: ProspectServiceProtocol = ProspectService.current) {
         self.mode     = mode
+        self.authorName = authorName
         self.programs = programs
         self.service  = service
         switch mode {
-        case .create:          programId = programs.first?.id
+        case .create(let session):
+            // The last programme used at this event, so a stand's agent does not pick it every time.
+            if let saved = UserDefaults.standard.string(forKey: Self.lastProgramKey(session.id)),
+               let id = UUID(uuidString: saved), programs.contains(where: { $0.id == id }) { programId = id }
         case .edit(let p):     populate(from: p)
         }
     }
@@ -44,25 +51,28 @@ final class ProspectFormViewModel {
         }
     }
 
+    var emailIsValid: Bool {
+        let parts = email.trimmingCharacters(in: .whitespaces).split(separator: "@")
+        return parts.count == 2 && parts[1].contains(".")
+    }
+
+    var phoneIsValid: Bool {
+        let trimmed = telephone.trimmingCharacters(in: .whitespaces)
+        let allowed = CharacterSet.decimalDigits.union(CharacterSet(charactersIn: " +-()/."))
+        return trimmed.filter(\.isNumber).count >= 6 && trimmed.unicodeScalars.allSatisfy { allowed.contains($0) }
+    }
+
+    private static func lastProgramKey(_ session: UUID) -> String { "lastProgram.\(session.uuidString)" }
+
+    /// A programme is required when the organization has any: it feeds the stats.
+    var needsProgram: Bool { !programs.isEmpty && programId == nil }
+
     var isValid: Bool {
-        let trimmedPrenom    = prenom.trimmingCharacters(in: .whitespaces)
-        let trimmedNom       = nom.trimmingCharacters(in: .whitespaces)
-        let trimmedEmail     = email.trimmingCharacters(in: .whitespaces)
-        let trimmedTelephone = telephone.trimmingCharacters(in: .whitespaces)
-
-        guard !trimmedPrenom.isEmpty,
-              !trimmedNom.isEmpty,
-              !trimmedEmail.isEmpty,
-              !trimmedTelephone.isEmpty else { return false }
-
-        let emailParts = trimmedEmail.split(separator: "@")
-        guard emailParts.count == 2, emailParts[1].contains(".") else { return false }
-
-        let allowedPhoneChars = CharacterSet.decimalDigits.union(CharacterSet(charactersIn: " +-()/."))
-        guard trimmedTelephone.filter(\.isNumber).count >= 6,
-              trimmedTelephone.unicodeScalars.allSatisfy({ allowedPhoneChars.contains($0) }) else { return false }
-
-        return true
+        !needsProgram
+            && !prenom.trimmingCharacters(in: .whitespaces).isEmpty
+            && !nom.trimmingCharacters(in: .whitespaces).isEmpty
+            && emailIsValid
+            && phoneIsValid
     }
 
     private func populate(from p: Prospect) {
@@ -86,7 +96,8 @@ final class ProspectFormViewModel {
             programId:    programId,
             niveauActuel: niveauActuel.rawValue,
             statut:       statut.rawValue,
-            notes:        trimmedNotes.isEmpty ? nil : trimmedNotes
+            notes:        trimmedNotes.isEmpty ? nil : trimmedNotes,
+            clientId:     { if case .create = mode { return clientId } else { return nil } }()
         )
     }
 
@@ -98,7 +109,13 @@ final class ProspectFormViewModel {
         do {
             switch mode {
             case .create(let session):
-                return try await service.createProspect(sessionId: session.id, input)
+                if let programId { UserDefaults.standard.set(programId.uuidString, forKey: Self.lastProgramKey(session.id)) }
+                do {
+                    return try await service.createProspect(sessionId: session.id, input)
+                } catch let error as APIError where error.status == 0 {
+                    // No network: keep it on the phone and send it later.
+                    return PendingProspectStore.shared.enqueue(sessionId: session.id, input: input, authorName: authorName)
+                }
             case .edit(let existing):
                 return try await service.updateProspect(id: existing.id, input)
             }

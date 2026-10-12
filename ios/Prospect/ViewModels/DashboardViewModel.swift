@@ -30,6 +30,12 @@ struct ClosingCount: Identifiable {
     var total: Int { rdvInfo + rdvAdmission }
 }
 
+struct HourCount: Identifiable {
+    let hour: Int
+    let count: Int
+    var id: Int { hour }
+}
+
 @Observable
 @MainActor
 final class DashboardViewModel {
@@ -47,7 +53,7 @@ final class DashboardViewModel {
 
     @ObservationIgnored private let service: ProspectServiceProtocol
 
-    init(service: ProspectServiceProtocol = ProspectService.shared) {
+    init(service: ProspectServiceProtocol = ProspectService.current) {
         self.service = service
     }
 
@@ -116,6 +122,17 @@ final class DashboardViewModel {
             StatutCount(statut: s, count: filteredProspects.filter { $0.statut == s.rawValue }.count)
         }
     }
+
+    /// Registrations per clock hour between the first and the last one: when the rush happened.
+    var arrivals: [HourCount] {
+        let calendar = Calendar.current
+        let hours = filteredProspects.compactMap { p in ISODates.parse(p.createdAt).map { calendar.component(.hour, from: $0) } }
+        guard let first = hours.min(), let last = hours.max() else { return [] }
+        let counts = Dictionary(grouping: hours, by: { $0 }).mapValues(\.count)
+        return (first...last).map { HourCount(hour: $0, count: counts[$0] ?? 0) }
+    }
+
+    var peakHour: HourCount? { arrivals.max { $0.count < $1.count } }
 
     var byAgent: [AgentCount] {
         let groups = Dictionary(grouping: filteredProspects, by: { $0.agentNom })

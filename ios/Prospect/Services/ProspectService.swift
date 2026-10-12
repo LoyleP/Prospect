@@ -50,6 +50,11 @@ struct MyStats: Decodable, Sendable, Equatable {
 final class ProspectService: ProspectServiceProtocol, @unchecked Sendable {
     static let shared = ProspectService()
 
+    /// What view models should use by default: the demo backend when the debug menu enabled it,
+    /// the real API otherwise. Read when a view model is created.
+    nonisolated(unsafe) static var override: ProspectServiceProtocol?
+    static var current: ProspectServiceProtocol { override ?? shared }
+
     private let api: APIClient
     private let lock = NSLock()
     private var _organizationId: UUID?

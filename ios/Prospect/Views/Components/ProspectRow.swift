@@ -1,48 +1,39 @@
 // Views/Components/ProspectRow.swift
-// Row showing name, program, statut badge, and registering member.
+// One line, Linear style: stage ring, name, and the programme on the right.
 import SwiftUI
 
 struct ProspectRow: View {
     let prospect: Prospect
+    var showsStatus = true
+    var isPending = false
     @Environment(AppState.self) private var appState
 
-    private var wasModified: Bool {
-        prospect.createdAt != prospect.updatedAt
-    }
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text(prospect.fullName)
-                    .font(.geistHeadline)
-
-                if wasModified {
-                    BadgeTag(label: "Modifié", color: Color.warning)
-                }
-
-                Spacer()
-                if let s = prospect.statutEnum {
-                    StatutBadge(statut: s)
-                }
+        HStack(spacing: Space.m) {
+            if showsStatus, let s = prospect.statutEnum { StatusRing(statut: s) }
+            Text(prospect.fullName)
+                .font(.system(size: 16, weight: .regular))
+                .foregroundStyle(Color.inkPrimary)
+                .lineLimit(1)
+            Spacer(minLength: Space.s)
+            if isPending {
+                Image(systemName: "icloud.and.arrow.up")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Color.warning)
+                    .accessibilityLabel("En attente d'envoi")
             }
-            HStack(spacing: 4) {
-                if let program = appState.program(prospect.programId) {
-                    Circle()
-                        .fill(program.swiftUIColor)
-                        .frame(width: 8, height: 8)
+            if let program = appState.program(prospect.programId) {
+                HStack(spacing: 6) {
+                    Circle().fill(program.swiftUIColor).frame(width: 7, height: 7)
+                    Text(program.name)
+                        .font(.textFootnote)
+                        .foregroundStyle(Color.inkSecondary)
+                        .lineLimit(1)
                 }
-                Text(appState.programName(prospect.programId))
-                    .font(.geistSubheadline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Image(systemName: "person.fill")
-                    .font(.geistCaption)
-                    .foregroundStyle(.tertiary)
-                Text(prospect.agentNom)
-                    .font(.geistCaption)
-                    .foregroundStyle(.tertiary)
+                .frame(maxWidth: 130, alignment: .trailing)
             }
         }
-        .padding(.vertical, 2)
+        .frame(minHeight: 55)
+        .contentShape(Rectangle())
     }
 }

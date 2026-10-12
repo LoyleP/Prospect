@@ -33,7 +33,7 @@ extension View {
     /// `toolbarBackground(_:for:)` — the title still reserves its space but is never
     /// painted. So no colour is set here; only the visibility. The bar keeps its
     /// system material, which already reads as `Color.surfaceBackground` under the
-    /// app's forced dark scheme.
+    /// app's paper surface in both appearances.
     ///
     /// No-op pre-iOS 26, where the UIKit appearance proxy in `YstudentsApp` owns the bar.
     func themedNavigationBar() -> some View {

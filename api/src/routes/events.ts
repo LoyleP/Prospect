@@ -212,17 +212,21 @@ events.post("/events/:eventId/prospects", async (c) => {
   const eventId = uuidParam(c, "eventId");
   const event = await loadEvent(c, eventId);
   if (event.is_archived) throw apiError(409, "event_archived", "This event is archived");
-  const b = await parseBody(c.req, z.object(prospectFields));
+  // `id` is optional and chosen by the client: sending the same one again returns the existing
+  // prospect instead of creating a duplicate, so a retry after a network drop is safe.
+  const b = await parseBody(c.req, z.object({ ...prospectFields, id: z.uuid().optional() }));
   const sql = db();
   await assertProgramInOrg(sql, orgId, b.program_id);
   const author = authorOf(c);
+  const id = b.id ?? crypto.randomUUID();
   const [created] = await sql<{ id: string }[]>`
-    insert into prospects (org_id, event_id, first_name, last_name, email, phone, program_id, education_level,
+    insert into prospects (id, org_id, event_id, first_name, last_name, email, phone, program_id, education_level,
                            status, notes, created_by_user, created_by_participant, created_by_name)
-    values (${orgId}, ${eventId}, ${b.first_name}, ${b.last_name}, ${b.email}, ${b.phone}, ${b.program_id},
+    values (${id}, ${orgId}, ${eventId}, ${b.first_name}, ${b.last_name}, ${b.email}, ${b.phone}, ${b.program_id},
             ${b.education_level}, ${b.status}, ${b.notes ?? null}, ${author.userId}, ${author.participantId}, ${author.name})
+    on conflict (id) do nothing
     returning id`;
-  return c.json(await loadProspect(sql, orgId, created!.id), 201);
+  return c.json(await loadProspect(sql, orgId, id), created ? 201 : 200);
 });
 
 /** Archived prospects: the whole organization for admins, their event for participants. */

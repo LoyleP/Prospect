@@ -52,7 +52,7 @@ final class ProspectListViewModel {
         filterAgents   = []
     }
 
-    init(session: Session, isReadOnly: Bool, service: ProspectServiceProtocol = ProspectService.shared) {
+    init(session: Session, isReadOnly: Bool, service: ProspectServiceProtocol = ProspectService.current) {
         self.session    = session
         self.isReadOnly = isReadOnly
         self.service    = service
@@ -81,13 +81,31 @@ final class ProspectListViewModel {
             try? await Task.sleep(for: Self.pollInterval)
             guard !Task.isCancelled else { break }
             // Silent refresh: a failed poll keeps the current list and retries next tick.
+            await flushPending()
             if let fresh = try? await service.fetchProspects(sessionId: session.id) {
                 apply(fresh)
             }
         }
     }
 
-    private func apply(_ fresh: [Prospect]) {
+    /// Sends prospects saved while offline. Called on every poll and when the network returns.
+    func flushPending() async {
+        let store = PendingProspectStore.shared
+        guard !store.items.isEmpty else { return }
+        let result = await store.flush(using: service)
+        if result.dropped > 0 {
+            errorMessage = "\(result.dropped) prospect\(result.dropped > 1 ? "s" : "") enregistré\(result.dropped > 1 ? "s" : "") hors connexion n'ont pas pu être envoyés (événement archivé ou données refusées)."
+        }
+        if !result.sent.isEmpty, let fresh = try? await service.fetchProspects(sessionId: session.id) { apply(fresh) }
+    }
+
+    private func apply(_ serverList: [Prospect]) {
+        // Still-pending prospects stay visible at the top until the server has them.
+        let known = Set(serverList.map(\.id))
+        let pending = PendingProspectStore.shared.items(for: session.id)
+            .filter { !known.contains($0.id) }
+            .map(PendingProspectStore.prospect(from:))
+        let fresh = pending + serverList
         guard fresh != prospects else { return }
         prospects = fresh
         if session.statutSession == .enCours {

@@ -1,5 +1,5 @@
 // Views/EventAccessView.swift
-// Admin-only: the event's join codes (agent / conseiller) and who joined with them.
+// Admin-only: the event's join codes, one ticket each, and who joined with them.
 import SwiftUI
 
 struct EventAccessView: View {
@@ -12,8 +12,9 @@ struct EventAccessView: View {
     @State private var errorMessage: String?
     @State private var roleToRegenerate: Role?
     @State private var participantToRemove: Participant?
+    @State private var toast: Toast?
     private let onChange: (SessionSummary) -> Void
-    private let service: ProspectServiceProtocol = ProspectService.shared
+    private let service: ProspectServiceProtocol = ProspectService.current
 
     init(summary: SessionSummary, onChange: @escaping (SessionSummary) -> Void = { _ in }) {
         _summary = State(initialValue: summary)
@@ -21,119 +22,115 @@ struct EventAccessView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            List {
+        ScrollView {
+            VStack(alignment: .leading, spacing: Space.xl) {
+                ScreenHeading(label: summary.name, title: "Codes d'accès.")
+                    .padding(.trailing, 44)
+
                 if summary.isArchived {
-                    Section {
-                        Label("Archivé : les codes ne permettent plus de rejoindre.", systemImage: "lock")
-                            .foregroundStyle(Color.warning)
-                    }
-                    .themedRowBackground()
+                    Text("Archivé : ces codes ne fonctionnent plus.")
+                        .font(.textFootnote.weight(.semibold))
+                        .foregroundStyle(Color.accent)
                 }
 
-                codeSection(role: .agent, footer: "Les agents enregistrent et modifient les prospects.")
-                codeSection(role: .conseillerFormation, footer: "Les conseillers consultent les prospects et le tableau de bord.")
+                NumberedSection(number: "01", title: "Agents") {
+                    ticket(.agent, detail: "")
+                }
+                NumberedSection(number: "02", title: "Conseillers") {
+                    ticket(.conseillerFormation, detail: "")
+                }
 
-                Section {
+                NumberedSection(number: "03", title: "Présents (\(participants.count))") {
                     if participants.isEmpty && !isLoading {
                         Text("Personne n'a encore rejoint.")
-                            .foregroundStyle(.secondary)
+                            .font(.textSub)
+                            .foregroundStyle(Color.inkSecondary)
                     }
-                    ForEach(participants) { p in
-                        HStack {
-                            Text(p.displayName)
-                            Spacer()
-                            BadgeTag(label: p.role.shortLabel, color: p.role == .agent ? .roleAgent : .roleCF)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                            Button(role: .destructive) {
-                                participantToRemove = p
-                            } label: {
-                                Label("Retirer", systemImage: "person.badge.minus")
+                    VStack(spacing: 0) {
+                        ForEach(participants) { p in
+                            HStack(spacing: Space.m) {
+                                Monogram(name: p.displayName, size: 38)
+                                Text(p.displayName)
+                                    .font(.textHeadline)
+                                    .foregroundStyle(Color.inkPrimary)
+                                Spacer()
+                                StatusLabel(text: p.role.shortLabel, color: p.role == .agent ? .inkSecondary : .info, showsDot: false)
+                                Button { participantToRemove = p } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(Color.inkTertiary)
+                                        .frame(width: 55, height: 55)
+                                        .contentShape(Rectangle())
+                                }
+                                .accessibilityLabel("Retirer \(p.displayName)")
                             }
+                            .padding(.vertical, Space.s)
+                            Rule()
                         }
                     }
-                } header: {
-                    Text("Participants (\(participants.count))")
-                } footer: {
-                    Text("Glissez vers la gauche pour retirer quelqu'un : il perd l'accès immédiatement, ses prospects sont conservés.")
-                }
-                .themedRowBackground()
-            }
-            .themedListBackground()
-            .themedNavigationBar()
-            .navigationTitle("Codes d'accès")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("OK") { dismiss() }
+
                 }
             }
-            .task { await loadParticipants() }
-            .refreshable { await loadParticipants() }
-            .confirmationDialog(
-                "Générer un nouveau code ?",
-                isPresented: Binding(get: { roleToRegenerate != nil }, set: { if !$0 { roleToRegenerate = nil } }),
-                titleVisibility: .visible
-            ) {
-                Button("Nouveau code", role: .destructive) {
-                    if let role = roleToRegenerate { Task { await regenerate(role) } }
-                }
-            } message: {
-                Text("L'ancien code ne fonctionnera plus. Les personnes déjà connectées gardent leur accès.")
+            .padding(.horizontal, Space.gutter)
+            .padding(.top, Space.xl)
+            .padding(.bottom, Space.xxl)
+        }
+        .background(PaperBackground())
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(Color.inkPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.surfaceCard2, in: Circle())
+                    .frame(width: 55, height: 55)
+                    .contentShape(Rectangle())
             }
-            .alert(
-                "Retirer \(participantToRemove?.displayName ?? "") ?",
-                isPresented: Binding(get: { participantToRemove != nil }, set: { if !$0 { participantToRemove = nil } })
-            ) {
-                Button("Retirer", role: .destructive) {
-                    if let p = participantToRemove { Task { await remove(p) } }
-                }
-                Button("Annuler", role: .cancel) {}
+            .padding(Space.l)
+            .accessibilityLabel("Fermer")
+        }
+        .toast($toast)
+        .presentationDragIndicator(.visible)
+        .presentationBackground(Color.surfaceBackground)
+        .task { await loadParticipants() }
+        .refreshable { await loadParticipants() }
+        .confirmationDialog(
+            "Générer un nouveau code ?",
+            isPresented: Binding(get: { roleToRegenerate != nil }, set: { if !$0 { roleToRegenerate = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Nouveau code", role: .destructive) {
+                if let role = roleToRegenerate { Task { await regenerate(role) } }
             }
-            .alert("Erreur", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-                Button("OK") { errorMessage = nil }
-            } message: {
-                Text(errorMessage ?? "")
+        } message: {
+            Text("L'ancien code ne fonctionnera plus. Les personnes déjà connectées gardent leur accès.")
+        }
+        .alert(
+            "Retirer \(participantToRemove?.displayName ?? "") ?",
+            isPresented: Binding(get: { participantToRemove != nil }, set: { if !$0 { participantToRemove = nil } })
+        ) {
+            Button("Retirer", role: .destructive) {
+                if let p = participantToRemove { Task { await remove(p) } }
             }
+            Button("Annuler", role: .cancel) {}
+        }
+        .alert("Erreur", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button("OK") { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
         }
     }
 
-    private func codeSection(role: Role, footer: String) -> some View {
-        let code = summary.code(for: role) ?? "—"
-        return Section {
-            HStack {
-                Text(code)
-                    .font(.geistMonoTitle3.weight(.bold))
-                    .tracking(4)
-                    .textSelection(.enabled)
-                    .accessibilityLabel("Code \(role.label) : \(code.map(String.init).joined(separator: " "))")
-                Spacer()
-                ShareLink(item: shareMessage(code: code, role: role)) {
-                    Image(systemName: "square.and.arrow.up")
-                        .accessibilityLabel("Partager le code \(role.label)")
-                }
-                .buttonStyle(.borderless)
-                Button {
-                    roleToRegenerate = role
-                } label: {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .accessibilityLabel("Nouveau code \(role.label)")
-                }
-                .buttonStyle(.borderless)
-                .padding(.leading, 12)
-            }
-            .padding(.vertical, 4)
-        } header: {
-            Text("Code \(role.label.lowercased())")
-        } footer: {
-            Text(footer)
-        }
-        .themedRowBackground()
-    }
-
-    private func shareMessage(code: String, role: Role) -> String {
-        "Rejoignez « \(summary.name) » sur Prospect en tant que \(role.label.lowercased()) : ouvrez l'app, choisissez « Rejoindre » et entrez le code \(code)."
+    private func ticket(_ role: Role, detail: String) -> some View {
+        let code = summary.code(for: role) ?? "——————"
+        return CodeTicket(
+            title: "Code \(role.label.lowercased())",
+            detail: detail,
+            code: code,
+            shareText: "Rejoignez « \(summary.name) » sur Prospect en tant que \(role.label.lowercased()) : ouvrez l'app, onglet Code, et entrez \(code).",
+            onCopy: { copyToPasteboard(code); toast = Toast(message: "Code copié", style: .success) },
+            onRegenerate: { roleToRegenerate = role }
+        )
     }
 
     private func loadParticipants() async {
@@ -150,6 +147,7 @@ struct EventAccessView: View {
         do {
             summary = try await service.regenerateCode(sessionId: summary.id, role: role)
             onChange(summary)
+            toast = Toast(message: "Nouveau code généré", style: .success)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -164,14 +162,4 @@ struct EventAccessView: View {
             errorMessage = error.localizedDescription
         }
     }
-}
-
-#Preview {
-    EventAccessView(summary: SessionSummary(
-        session: Session(id: UUID(), name: "Salon de l'étudiant", date: "2026-11-14", isArchived: false,
-                         statutSession: .enCours, preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0,
-                         programObjectives: [:], createdAt: "2026-10-01T09:00:00.000Z"),
-        prospectCount: 3, agentCode: "H4TR9P", cfCode: "W2NQ7D"
-    ))
-    .environment(AppState.preview())
 }

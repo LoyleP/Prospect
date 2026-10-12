@@ -42,7 +42,7 @@ struct Prospect: Codable, Identifiable, Equatable, Hashable, Sendable {
 }
 
 /// Body of `POST /events/:id/prospects` and `PATCH /prospects/:id`.
-struct ProspectInput: Encodable, Sendable, Equatable {
+struct ProspectInput: Codable, Sendable, Equatable {
     let prenom: String
     let nom: String
     let email: String
@@ -51,9 +51,12 @@ struct ProspectInput: Encodable, Sendable, Equatable {
     let niveauActuel: String
     let statut: String
     let notes: String?
+    /// Chosen by the app when the form opens. Sending it again (a retry) never creates a duplicate.
+    var clientId: UUID? = nil
 
     enum CodingKeys: String, CodingKey {
         case email, notes
+        case clientId     = "id"
         case prenom       = "first_name"
         case nom          = "last_name"
         case telephone    = "phone"
@@ -73,5 +76,6 @@ struct ProspectInput: Encodable, Sendable, Equatable {
         try c.encode(niveauActuel, forKey: .niveauActuel)
         try c.encode(statut, forKey: .statut)
         try c.encode(notes, forKey: .notes)
+        try c.encodeIfPresent(clientId, forKey: .clientId)
     }
 }

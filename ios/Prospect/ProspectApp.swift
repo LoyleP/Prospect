@@ -4,10 +4,17 @@ import UIKit
 
 @main
 struct ProspectApp: App {
-    @State private var appState = AppState()
+    @State private var appState: AppState
 
     init() {
-        Font.registerGeistFonts()
+        #if DEBUG
+        DebugLaunch.prepare()   // may switch the app onto the demo backend before AppState reads it
+        #endif
+        let state = AppState()
+        #if DEBUG
+        state.loginIntent = DebugLaunch.intent
+        #endif
+        _appState = State(initialValue: state)
         Self.configureNavigationBarAppearance()
         Self.configureTabBarAppearance()
     }
@@ -27,13 +34,13 @@ struct ProspectApp: App {
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = UIColor(Color.surfaceBackground)
 
-        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(Color.gray100)]
-        appearance.titleTextAttributes = [.foregroundColor: UIColor(Color.gray100)]
+        appearance.largeTitleTextAttributes = [.foregroundColor: UIColor(Color.inkPrimary)]
+        appearance.titleTextAttributes = [.foregroundColor: UIColor(Color.inkPrimary)]
 
         UINavigationBar.appearance().standardAppearance = appearance
         UINavigationBar.appearance().scrollEdgeAppearance = appearance
         UINavigationBar.appearance().compactAppearance = appearance
-        UINavigationBar.appearance().tintColor = UIColor(Color.accent)
+        UINavigationBar.appearance().tintColor = UIColor(Color.inkPrimary)
     }
 
     private static func configureTabBarAppearance() {
@@ -43,14 +50,16 @@ struct ProspectApp: App {
 
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
-        UITabBar.appearance().tintColor = UIColor(Color.accent)
-        UITabBar.appearance().unselectedItemTintColor = UIColor(Color.gray500)
+        UITabBar.appearance().tintColor = UIColor(Color.inkPrimary)
+        UITabBar.appearance().unselectedItemTintColor = UIColor(Color.inkTertiary)
     }
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .tint(Color.inkPrimary)
+                // Dark only, by design: the UI is built for dim, busy event halls.
                 .preferredColorScheme(.dark)
         }
     }
