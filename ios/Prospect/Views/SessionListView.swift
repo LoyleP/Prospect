@@ -7,7 +7,6 @@ struct SessionListView: View {
     @State private var viewModel = SessionListViewModel()
     @State private var showProfile = false
     @State private var showEvents = false
-    @State private var showSettings = false
     @State private var sessionForObjectives: SessionSummary?
     @State private var sessionForInvite: SessionSummary?
     @Environment(AppState.self) private var appState
@@ -33,7 +32,6 @@ struct SessionListView: View {
                     onShowProfile: { showProfile = true },
                     onShowEvents: { showEvents = true },
                     eventActions: appState.isAdmin ? EventActions(
-                        settings: { showSettings = true },
                         edit: { vm.beginEdit(selected) },
                         objectives: { sessionForObjectives = selected },
                         toggleArchive: { Task { await vm.toggleArchive(selected) } },
@@ -51,10 +49,6 @@ struct SessionListView: View {
         }
         .sheet(isPresented: $showProfile) {
             ProfileView()
-        }
-        .sheet(isPresented: $showSettings) {
-            OrganizationSettingsView()
-                .presentationBackground(Color.surfaceBackground)
         }
         .sheet(isPresented: $showEvents) {
             EventPickerSheet(

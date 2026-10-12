@@ -1,126 +1,69 @@
-// Views/OrganizationSettingsView.swift
-// Organizer only: what events are called, and the list of programs shared in every invitation.
+// Views/ProgramsSection.swift
+// The list of programs, as a section of the event editor ("Modifier"). Programs are shared in every invitation.
 import SwiftUI
 
-struct OrganizationSettingsView: View {
+struct ProgramsSection: View {
     @Environment(AppState.self) private var appState
-    @Environment(\.dismiss) private var dismiss
 
-    private enum Field { case label }
-
-    @State private var eventLabel = ""
-    @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var programToEdit: Program?
     @State private var showNewProgram = false
     @State private var reordering = false
-    @State private var toast: Toast?
-    @FocusState private var focused: Field?
 
     private let service: ProspectServiceProtocol = ProspectService.current
 
-    private var hasChanges: Bool {
-        guard let org = appState.currentOrganization else { return false }
-        let l = eventLabel.trimmingCharacters(in: .whitespaces)
-        return !l.isEmpty && l != org.eventLabel
-    }
-
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: Space.xl) {
-                ScreenHeading(label: appState.agentNom, title: "Réglages")
-
-                NumberedSection(number: "01", title: "Événements") {
-                    VStack(spacing: Space.m) {
-                        LabeledField(title: "Vos événements s'appellent", isFocused: focused == .label) {
-                            TextField("Événement, JPO, Salon…", text: $eventLabel).focused($focused, equals: .label)
-                        }
-                        if hasChanges {
-                            Button {
-                                Task { await saveOrganization() }
-                            } label: {
-                                ZStack {
-                                    Text("Enregistrer").opacity(isSaving ? 0 : 1)
-                                    if isSaving { ProgressView().tint(Color.onAccent) }
-                                }
-                            }
-                            .buttonStyle(.primary)
-                            .disabled(isSaving)
-                            .transition(.opacity)
-                        }
-                    }
-                    .animation(.curve(0.2), value: hasChanges)
-                }
-
-                NumberedSection(number: "02", title: "Programmes") {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(Array(appState.programs.enumerated()), id: \.element.id) { index, program in
+        NumberedSection(number: "", title: "Programmes") {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(appState.programs.enumerated()), id: \.element.id) { index, program in
+                    HStack(spacing: Space.m) {
+                        Button { if !reordering { programToEdit = program } } label: {
                             HStack(spacing: Space.m) {
-                                Button { if !reordering { programToEdit = program } } label: {
-                                    HStack(spacing: Space.m) {
-                                        RoundedRectangle(cornerRadius: 3).fill(program.swiftUIColor).frame(width: 14, height: 14)
-                                        Text(program.name).font(.textHeadline).foregroundStyle(Color.inkPrimary)
-                                        Spacer()
-                                        if !reordering {
-                                            Image(systemName: "chevron.right")
-                                                .font(.system(size: 12, weight: .semibold))
-                                                .foregroundStyle(Color.inkTertiary)
-                                        }
-                                    }
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-
-                                if reordering {
-                                    moveButton("chevron.up", enabled: index > 0) { Task { await move(index, by: -1) } }
-                                    moveButton("chevron.down", enabled: index < appState.programs.count - 1) { Task { await move(index, by: 1) } }
+                                Circle().fill(program.swiftUIColor).frame(width: 12, height: 12)
+                                Text(program.name).font(.textBody).foregroundStyle(Color.inkPrimary)
+                                Spacer()
+                                if !reordering {
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Color.inkTertiary)
                                 }
                             }
-                            .padding(.vertical, Space.m)
-                            Rule()
+                            .frame(minHeight: 55)
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
 
-                        HStack(spacing: Space.l) {
-                            Button { showNewProgram = true } label: {
-                                Label("Ajouter un programme", systemImage: "plus").font(.textSub.weight(.semibold))
-                            }
-                            Spacer()
-                            if appState.programs.count > 1 {
-                                Button(reordering ? "Terminer" : "Réordonner") { reordering.toggle() }
-                                    .buttonStyle(.link)
-                            }
+                        if reordering {
+                            moveButton("chevron.up", enabled: index > 0) { Task { await move(index, by: -1) } }
+                            moveButton("chevron.down", enabled: index < appState.programs.count - 1) { Task { await move(index, by: 1) } }
                         }
-                        .foregroundStyle(Color.inkPrimary)
-                        .padding(.top, Space.l)
+                    }
+                    Rule()
+                }
 
+                HStack(spacing: Space.l) {
+                    Button { showNewProgram = true } label: {
+                        Label("Ajouter", systemImage: "plus")
+                            .font(.textSub.weight(.semibold))
+                            .frame(minHeight: 55)
+                            .contentShape(Rectangle())
+                    }
+                    Spacer()
+                    if appState.programs.count > 1 {
+                        Button {
+                            Haptics.selection()
+                            withAnimation(.curve(Motion.micro)) { reordering.toggle() }
+                        } label: {
+                            Image(systemName: reordering ? "checkmark" : "arrow.up.arrow.down")
+                                .font(.system(size: 15, weight: .semibold))
+                                .frame(width: 55, height: 55)
+                                .contentShape(Rectangle())
+                        }
+                        .accessibilityLabel(reordering ? "Terminer" : "Réordonner")
                     }
                 }
+                .foregroundStyle(Color.inkPrimary)
             }
-            .padding(.horizontal, Space.gutter)
-            .padding(.top, Space.s)
-            .padding(.bottom, Space.xxl)
-        }
-        .scrollDismissesKeyboard(.interactively)
-        .background(PaperBackground())
-        .overlay(alignment: .topTrailing) {
-            Button { dismiss() } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.inkPrimary)
-                    .frame(width: 44, height: 44)
-                    .background(Color.surfaceCard2, in: Circle())
-                    .frame(width: 55, height: 55)
-                    .contentShape(Rectangle())
-            }
-            .padding(Space.l)
-            .accessibilityLabel("Fermer")
-        }
-        .presentationDragIndicator(.visible)
-        .toast($toast)
-        .navigationTitle("")
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            eventLabel = appState.eventLabel
         }
         .task { await appState.reloadPrograms() }
         .sheet(item: $programToEdit) { program in
@@ -163,22 +106,9 @@ struct OrganizationSettingsView: View {
                 .foregroundStyle(enabled ? Color.inkPrimary : Color.inkTertiary.opacity(0.4))
                 .frame(width: 55, height: 55)
                 .contentShape(Rectangle())
-                .overlay { RoundedRectangle(cornerRadius: Radius.s + 2, style: .continuous).strokeBorder(Color.rule, lineWidth: 1) }
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
-    }
-
-    private func saveOrganization() async {
-        focused = nil
-        isSaving = true
-        defer { isSaving = false }
-        do {
-            appState.updateIdentity(eventLabel: eventLabel.trimmingCharacters(in: .whitespaces))
-            toast = Toast(message: "Réglages enregistrés", style: .success)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
     }
 
     private func move(_ index: Int, by delta: Int) async {
@@ -329,9 +259,4 @@ private struct ProgramEditor: View {
             Haptics.error()
         }
     }
-}
-
-#Preview {
-    NavigationStack { OrganizationSettingsView() }
-        .environment(AppState.preview())
 }

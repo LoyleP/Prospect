@@ -69,6 +69,7 @@ struct EventEditorSheet: View {
                     .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
 
                     if mode == .edit {
+                        ProgramsSection()
                         VStack(alignment: .leading, spacing: Space.m) {
                             Text("Statut")
                                 .font(.textCaption.weight(.semibold))
