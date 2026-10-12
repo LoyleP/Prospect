@@ -7,7 +7,14 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["src", "scripts", "test"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "src/dev.ts"
+  ]
 }
