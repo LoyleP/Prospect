@@ -239,11 +239,10 @@ struct ProspectFormView: View {
         .environment(state)
 }
 
-#if DEBUG
+/// Demo event for the preview above. Not Debug-only: Release builds still compile #Preview bodies.
 enum TestPreviewData {
     static let session = Session(
         id: UUID(), name: "Salon", date: "2026-11-14", isArchived: false, statutSession: .enCours,
         preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:], createdAt: "2026-10-01T09:00:00.000Z"
     )
 }
-#endif
