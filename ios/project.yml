@@ -74,6 +74,8 @@ targets:
             UTTypeTagSpecification:
               public.filename-extension:
                 - prospects
+        # Apple requires one of the two document keys: a handover file is copied in, never edited in place.
+        LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
           - CFBundleTypeName: Envoi Prospect
             LSHandlerRank: Owner

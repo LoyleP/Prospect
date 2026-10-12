@@ -132,8 +132,8 @@
 			isa = PBXGroup;
 			children = (
 				CAA20C019808191D4011842D /* LiveActivity */,
-				69BDBC71D9ED85A8ECC21070 /* Prospect */,
 				F20A3C623F337AA5916EBC1E /* Prospect */,
+				69BDBC71D9ED85A8ECC21070 /* Prospect */,
 				E3381850F5AA1844BC7E3CD1 /* ProspectTests */,
 				9EDB8CAC95B81092CD277A9A /* ProspectUITests */,
 				3AC872B561916D25A051A514 /* Products */,
