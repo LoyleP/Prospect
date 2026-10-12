@@ -10,6 +10,7 @@
 		03F4D380E332DEE07F0AAE74 /* SessionActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7ADBB77B8BF6814C1E024A8 /* SessionActivityAttributes.swift */; };
 		0E80F7FDA82D03445EB24B47 /* KeychainAccess in Frameworks */ = {isa = PBXBuildFile; productRef = 0831E8CF7606D52E20824C8B /* KeychainAccess */; };
 		B4FD245C6BA4DDC56588186E /* ProspectLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = F9D5392B7C86E2C8FAEDB428 /* ProspectLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		FE139C290F7E44F552571BF2 /* RiveRuntime in Frameworks */ = {isa = PBXBuildFile; productRef = 12A18B80D4C7EC161417B693 /* RiveRuntime */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -103,6 +104,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0E80F7FDA82D03445EB24B47 /* KeychainAccess in Frameworks */,
+				FE139C290F7E44F552571BF2 /* RiveRuntime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,8 +134,8 @@
 			isa = PBXGroup;
 			children = (
 				CAA20C019808191D4011842D /* LiveActivity */,
-				69BDBC71D9ED85A8ECC21070 /* Prospect */,
 				F20A3C623F337AA5916EBC1E /* Prospect */,
+				69BDBC71D9ED85A8ECC21070 /* Prospect */,
 				E3381850F5AA1844BC7E3CD1 /* ProspectTests */,
 				9EDB8CAC95B81092CD277A9A /* ProspectUITests */,
 				3AC872B561916D25A051A514 /* Products */,
@@ -214,6 +216,7 @@
 			name = Prospect;
 			packageProductDependencies = (
 				0831E8CF7606D52E20824C8B /* KeychainAccess */,
+				12A18B80D4C7EC161417B693 /* RiveRuntime */,
 			);
 			productName = Prospect;
 			productReference = 49E0FA9C9B04FEB3D259C99E /* Prospect.app */;
@@ -280,6 +283,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				62E6F34056B9A0B3E936CB59 /* XCRemoteSwiftPackageReference "KeychainAccess" */,
+				CF312EB3CAEC3E257A6438EF /* XCRemoteSwiftPackageReference "rive-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3AC872B561916D25A051A514 /* Products */;
@@ -704,6 +708,14 @@
 				minimumVersion = 4.2.2;
 			};
 		};
+		CF312EB3CAEC3E257A6438EF /* XCRemoteSwiftPackageReference "rive-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/rive-app/rive-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.28.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -711,6 +723,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 62E6F34056B9A0B3E936CB59 /* XCRemoteSwiftPackageReference "KeychainAccess" */;
 			productName = KeychainAccess;
+		};
+		12A18B80D4C7EC161417B693 /* RiveRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = CF312EB3CAEC3E257A6438EF /* XCRemoteSwiftPackageReference "rive-ios" */;
+			productName = RiveRuntime;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

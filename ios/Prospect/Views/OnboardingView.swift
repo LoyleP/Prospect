@@ -86,7 +86,9 @@ struct OnboardingView: View {
 
     private var choose: some View {
         VStack(spacing: Space.s) {
-            Spacer(minLength: 0)
+            OnboardingAnimation()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.bottom, Space.s)
             choiceRow(icon: "flag", title: "Organiser") { go(.organize) }
                 .accessibilityIdentifier("organize")
                 .appears(0)

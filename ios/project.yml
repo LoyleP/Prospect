@@ -19,6 +19,9 @@ packages:
   KeychainAccess:
     url: https://github.com/kishikawakatsumi/KeychainAccess
     from: 4.2.2
+  RiveRuntime:
+    url: https://github.com/rive-app/rive-ios
+    from: 6.28.1
 
 targets:
   Prospect:
@@ -71,6 +74,8 @@ targets:
               - com.flow.prospect.handover
     dependencies:
       - package: KeychainAccess
+      - package: RiveRuntime
+        product: RiveRuntime
       - target: ProspectLiveActivity
         embed: true
 
