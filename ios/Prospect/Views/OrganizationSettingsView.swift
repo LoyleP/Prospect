@@ -4,6 +4,7 @@ import SwiftUI
 
 struct OrganizationSettingsView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.dismiss) private var dismiss
 
     private enum Field { case label }
 
@@ -101,6 +102,20 @@ struct OrganizationSettingsView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(PaperBackground())
+        .overlay(alignment: .topTrailing) {
+            Button { dismiss() } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.inkPrimary)
+                    .frame(width: 44, height: 44)
+                    .background(Color.surfaceCard2, in: Circle())
+                    .frame(width: 55, height: 55)
+                    .contentShape(Rectangle())
+            }
+            .padding(Space.l)
+            .accessibilityLabel("Fermer")
+        }
+        .presentationDragIndicator(.visible)
         .toast($toast)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

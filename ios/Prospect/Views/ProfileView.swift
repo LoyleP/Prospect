@@ -8,7 +8,6 @@ struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = ProfileViewModel()
     @State private var showReset = false
-    @State private var showSettings = false
     @State private var showJoin = false
     @State private var editingName = false
     @State private var newName = ""
@@ -29,14 +28,12 @@ struct ProfileView: View {
                     .animation(.curve(0.2), value: viewModel.isLoading)
                 }
 
-                VStack(spacing: 0) {
-                    if appState.isAdmin {
-                        row("Réglages", icon: "slider.horizontal.3") { showSettings = true }
-                    } else {
+                if !appState.isAdmin {
+                    VStack(spacing: 0) {
                         row("Rejoindre un autre événement", icon: "qrcode.viewfinder") { showJoin = true }
                     }
+                    .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
                 }
-                .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
 
                 Button("Réinitialiser cet appareil") { showReset = true }
                     .buttonStyle(.secondary)
@@ -62,10 +59,6 @@ struct ProfileView: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .presentationBackground(Color.surfaceBackground)
-        .sheet(isPresented: $showSettings) {
-            OrganizationSettingsView()
-                .presentationBackground(Color.surfaceBackground)
-        }
         .sheet(isPresented: $showJoin) {
             JoinSheet().presentationBackground(Color.surfaceBackground)
         }

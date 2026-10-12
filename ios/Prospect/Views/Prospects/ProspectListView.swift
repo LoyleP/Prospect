@@ -5,6 +5,7 @@ import SwiftUI
 
 /// What the organizer can do to the event shown. Agents get none: the event belongs to the organizer.
 struct EventActions {
+    var settings: () -> Void
     var edit: () -> Void
     var objectives: () -> Void
     var toggleArchive: () -> Void
@@ -206,6 +207,7 @@ struct ProspectListView: View {
             if let actions = eventActions {
                 // The event's settings, right beside the filters.
                 Menu {
+                    Button { actions.settings() } label: { Label("Réglages", systemImage: "gearshape") }
                     Button { actions.edit() } label: { Label("Modifier", systemImage: "pencil") }
                     Button { actions.objectives() } label: { Label("Objectifs", systemImage: "target") }
                     Button { actions.toggleArchive() } label: {
