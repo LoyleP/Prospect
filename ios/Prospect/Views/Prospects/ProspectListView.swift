@@ -123,6 +123,8 @@ struct ProspectListView: View {
                 toast = Toast(message: "Prospect ajouté", style: .success)
                 reveal(saved.id, proxy)
             }
+            .presentationDetents([.fraction(0.64), .large])
+            .presentationContentInteraction(.scrolls)
             .presentationBackground(Color.surfaceBackground)
         }
         .sheet(item: $prospectToEdit) { prospect in
@@ -130,6 +132,8 @@ struct ProspectListView: View {
                 viewModel.upsertLocally(saved)
                 toast = Toast(message: "Modifications enregistrées", style: .success)
             }
+            .presentationDetents([.fraction(0.64), .large])
+            .presentationContentInteraction(.scrolls)
             .presentationBackground(Color.surfaceBackground)
         }
         .sheet(isPresented: $showFilters) {

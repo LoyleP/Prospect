@@ -73,15 +73,18 @@ struct MainTabView: View {
         }
         .animation(.curve(Motion.tab), value: appState.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
+            let showsAdd = appState.selectedTab == .prospects && appState.canEditProspects
             HStack(spacing: Space.m) {
                 BottomTabBar(selection: $state.selectedTab, items: items)
-                if appState.selectedTab == .prospects && appState.canEditProspects {
+                if showsAdd {
                     AddProspectButton { appState.route = .newProspect }
                         .transition(.pop)
                 }
             }
             .padding(.horizontal, Space.l)
             .padding(.bottom, Space.s)
+            // The bar changes width when the add button comes or goes: its icons glide with it instead of jumping.
+            .animation(.curve(Motion.tab), value: showsAdd)
             .animation(.curve(Motion.tab), value: appState.selectedTab)
             .ignoresSafeArea(.keyboard)
         }

@@ -26,25 +26,6 @@ struct ProspectFormView: View {
         @Bindable var vm = viewModel
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
-                // Name: big, borderless, like an issue title.
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    TextField("", text: $vm.prenom, prompt: Text("Prénom").foregroundStyle(Color.inkTertiary))
-                        .textContentType(.givenName)
-                        .textInputAutocapitalization(.words)
-                        .focused($focused, equals: .prenom)
-                        .submitLabel(.next)
-                        .onSubmit { focused = .nom }
-                    TextField("", text: $vm.nom, prompt: Text("Nom").foregroundStyle(Color.inkTertiary))
-                        .textContentType(.familyName)
-                        .textInputAutocapitalization(.words)
-                        .focused($focused, equals: .nom)
-                        .submitLabel(.next)
-                        .onSubmit { focused = .email }
-                }
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(Color.inkPrimary)
-                .tint(Color.accent)
-
                 // Properties as pills; each opens a native menu.
                 ScrollView(.horizontal, showsIndicators: false) {
                   HStack(spacing: Space.s) {
@@ -79,8 +60,26 @@ struct ProspectFormView: View {
                 }
                 .padding(.horizontal, -Space.l)
 
-                // Contact, as a grouped block of rows.
+                // Everything typed lives in one grouped block: names, then contact.
                 VStack(spacing: 0) {
+                    detailRow(icon: "person") {
+                        TextField("", text: $vm.prenom, prompt: Text("Prénom").foregroundStyle(Color.inkTertiary))
+                            .textContentType(.givenName)
+                            .textInputAutocapitalization(.words)
+                            .focused($focused, equals: .prenom)
+                            .submitLabel(.next)
+                            .onSubmit { focused = .nom }
+                    }
+                    Rule().padding(.leading, 48)
+                    detailRow(icon: "person") {
+                        TextField("", text: $vm.nom, prompt: Text("Nom").foregroundStyle(Color.inkTertiary))
+                            .textContentType(.familyName)
+                            .textInputAutocapitalization(.words)
+                            .focused($focused, equals: .nom)
+                            .submitLabel(.next)
+                            .onSubmit { focused = .email }
+                    }
+                    Rule().padding(.leading, 48)
                     detailRow(icon: "envelope") {
                         TextField("", text: $vm.email, prompt: Text("Email").foregroundStyle(Color.inkTertiary))
                             .textContentType(.emailAddress)
@@ -106,11 +105,7 @@ struct ProspectFormView: View {
                     }
                 }
                 .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-                if isCreate {
-                    Text("En enregistrant, vous confirmez que cette personne accepte d'être recontactée.")
-                        .font(.textFootnote)
-                        .foregroundStyle(Color.inkTertiary)
-                }
+
                 if showEmailError { InlineError(text: "Adresse email invalide") }
                 if showPhoneError { InlineError(text: "Numéro invalide") }
             }
@@ -123,6 +118,13 @@ struct ProspectFormView: View {
         .background(PaperBackground())
         .safeAreaInset(edge: .top, spacing: 0) {
             HStack {
+                // Same width as the close button, so the title stays centered.
+                Color.clear.frame(width: 55, height: 55)
+                Spacer()
+                Text(isReadOnly ? "Prospect" : (isCreate ? "Nouveau prospect" : "Modifier"))
+                    .font(.textSub.weight(.medium))
+                    .foregroundStyle(Color.inkSecondary)
+                Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .semibold))
@@ -133,12 +135,6 @@ struct ProspectFormView: View {
                         .contentShape(Rectangle())
                 }
                 .accessibilityLabel("Fermer")
-                Spacer()
-                Text(isReadOnly ? "Prospect" : (isCreate ? "Nouveau prospect" : "Modifier"))
-                    .font(.textSub.weight(.medium))
-                    .foregroundStyle(Color.inkSecondary)
-                Spacer()
-                Color.clear.frame(width: 55, height: 55)
             }
             .padding(.horizontal, Space.s)
             .padding(.top, Space.xs)
@@ -214,9 +210,15 @@ struct ProspectFormView: View {
         .disabled(!viewModel.isValid || viewModel.isSaving)
         .accessibilityIdentifier("saveProspect")
         .padding(.horizontal, Space.gutter)
-        .padding(.top, Space.m)
+        .padding(.top, Space.xl)
         .padding(.bottom, Space.s)
-        .background(Color.surfaceBackground.opacity(0.96).ignoresSafeArea(edges: .bottom))
+        // Solid, so nothing scrolling underneath shows through, with a soft edge above the gap.
+        .background(alignment: .top) {
+            LinearGradient(colors: [Color.surfaceBackground.opacity(0), Color.surfaceBackground], startPoint: .top, endPoint: .bottom)
+                .frame(height: Space.xl)
+                .offset(y: -Space.xl)
+        }
+        .background(Color.surfaceBackground.ignoresSafeArea(edges: .bottom))
     }
 
     private func save() async {

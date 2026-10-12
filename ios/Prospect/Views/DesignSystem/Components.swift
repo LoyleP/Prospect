@@ -297,8 +297,6 @@ struct BottomTabBar: View {
                 } label: {
                     Image(systemName: item.icon)
                         .font(.system(size: 20, weight: .regular))
-                        .symbolVariant(selected ? .fill : .none)
-                        .contentTransition(.symbolEffect(.replace))
                         .foregroundStyle(selected ? Color.inkPrimary : Color.inkTertiary)
                         .frame(maxWidth: .infinity).frame(height: 55)
                         .background {
