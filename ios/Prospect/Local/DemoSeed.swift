@@ -86,7 +86,7 @@ enum DemoSeed {
                 preRegistered: status == .enCours ? 60 : 0, rdvTargetLow: status == .enCours ? 45 : 0, rdvTargetHigh: status == .enCours ? 65 : 0,
                 programObjectives: [:], createdAt: ProspectService.iso(now.addingTimeInterval(-86_400 * 3)),
                 organizerName: state.identity?.displayName ?? "", organizerPublicKey: key.publicKey.rawRepresentation.base64EncodedString(),
-                isOrganizer: true, prospects: list, receipts: receipts, lastSentAt: nil, lastSentCount: 0
+                isOrganizer: true, prospects: list, receipts: receipts, lastSentAt: nil, lastSentCount: 0, importsComplete: false
             )
         }
         let authors = ["Camille Martin": state.deviceId, "Hugo Petit": UUID(), "Sofia Rossi": UUID()]
@@ -109,7 +109,7 @@ enum DemoSeed {
             status: .enCours, isArchived: false, preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:],
             createdAt: ProspectService.iso(now.addingTimeInterval(-3_600)), organizerName: "Camille Martin",
             organizerPublicKey: key.publicKey.rawRepresentation.base64EncodedString(), isOrganizer: false,
-            prospects: list, receipts: [], lastSentAt: nil, lastSentCount: 0
+            prospects: list, receipts: [], lastSentAt: nil, lastSentCount: 0, importsComplete: true
         )
     }
 }

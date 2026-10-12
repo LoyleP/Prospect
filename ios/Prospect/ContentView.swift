@@ -10,13 +10,13 @@ struct ContentView: View {
         ZStack {
             switch appState.phase {
             case .onboarding:
-                OnboardingView().transition(.opacity)
+                // Leaving onboarding: it recedes while the app arrives from below.
+                OnboardingView().transition(.shift(scale: 1.04))
             case .ready:
-                MainTabView()
-                    .transition(.opacity.combined(with: .scale(scale: 0.98)))
+                MainTabView().transition(.shift(y: 28, scale: 0.98))
             }
         }
-        .animation(.curve(0.4), value: appState.phase)
+        .animation(.curve(Motion.large), value: appState.phase)
         // Rebuild everything after an import or a swap of the store (fresh view models, fresh data).
         .id(appState.epoch)
         .toast($toast)
@@ -30,61 +30,59 @@ struct ContentView: View {
 
 struct MainTabView: View {
     @Environment(AppState.self) private var appState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var items: [BottomTabBar.Item] {
-        var items: [BottomTabBar.Item] = [
-            .init(tab: .prospects, title: "Prospects", icon: "person.2"),
-            .init(tab: .dashboard, title: "Stats", icon: "chart.bar.xaxis"),
-            .init(tab: .archive, title: "Archive", icon: "archivebox"),
-        ]
+        var items: [BottomTabBar.Item] = [.init(tab: .prospects, title: "Prospects", icon: "person.2")]
+        // Agents never see statistics: only the organizer, who has the whole event once imports are done.
+        if appState.isAdmin { items.append(.init(tab: .dashboard, title: "Stats", icon: "chart.bar.xaxis")) }
+        items.append(.init(tab: .archive, title: "Archive", icon: "archivebox"))
         items.append(.init(tab: .exchange, title: appState.isAdmin ? "Collecte" : "Envoi",
                            icon: appState.isAdmin ? "tray.and.arrow.down" : "paperplane"))
         return items
     }
 
+    private func content(for tab: AppState.MainTab) -> some View {
+        NavigationStack {
+            switch tab {
+            case .prospects: SessionListView()
+            case .dashboard: DashboardView()
+            case .archive:   ArchiveView()
+            case .exchange:  ExchangeView()
+            }
+        }
+    }
+
     var body: some View {
         @Bindable var state = appState
-        // The system tab bar is hidden: BottomTabBar (a capsule) and the add button replace it.
-        TabView(selection: $state.selectedTab) {
-            NavigationStack {
-                SessionListView()
+        let tabs = items.map(\.tab)
+        let selectedIndex = tabs.firstIndex(of: appState.selectedTab) ?? 0
+        // Every tab stays alive (so each keeps its scroll position and state). Changing tab slides the
+        // current one out and the next one in along the same axis as the bar below.
+        ZStack {
+            ForEach(Array(tabs.enumerated()), id: \.element) { index, tab in
+                let active = tab == appState.selectedTab
+                content(for: tab)
                     .themedNavigationBar()
+                    .opacity(active ? 1 : 0)
+                    .offset(x: active || reduceMotion ? 0 : (index < selectedIndex ? -16 : 16))
+                    .allowsHitTesting(active)
+                    .accessibilityHidden(!active)
+                    .zIndex(active ? 1 : 0)
             }
-            .toolbarVisibility(.hidden, for: .tabBar)
-            .tag(AppState.MainTab.prospects)
-
-            NavigationStack {
-                DashboardView()
-                    .themedNavigationBar()
-            }
-            .toolbarVisibility(.hidden, for: .tabBar)
-            .tag(AppState.MainTab.dashboard)
-
-            NavigationStack {
-                ArchiveView()
-                    .themedNavigationBar()
-            }
-            .toolbarVisibility(.hidden, for: .tabBar)
-            .tag(AppState.MainTab.archive)
-
-            NavigationStack {
-                ExchangeView()
-                    .themedNavigationBar()
-            }
-            .toolbarVisibility(.hidden, for: .tabBar)
-            .tag(AppState.MainTab.exchange)
         }
+        .animation(.curve(Motion.tab), value: appState.selectedTab)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             HStack(spacing: Space.m) {
                 BottomTabBar(selection: $state.selectedTab, items: items)
                 if appState.selectedTab == .prospects && appState.canEditProspects {
                     AddProspectButton { appState.route = .newProspect }
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.pop)
                 }
             }
             .padding(.horizontal, Space.l)
             .padding(.bottom, Space.s)
-            .animation(.curve(0.25), value: appState.selectedTab)
+            .animation(.curve(Motion.tab), value: appState.selectedTab)
             .ignoresSafeArea(.keyboard)
         }
         .ignoresSafeArea(.keyboard)

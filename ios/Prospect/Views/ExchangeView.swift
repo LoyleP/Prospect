@@ -36,7 +36,7 @@ struct ExchangeView: View {
         .task { vm.load() }
         .onChange(of: appState.epoch) { _, _ in vm.load() }
         .onChange(of: vm.message) { _, text in
-            if let text { toast = Toast(message: text, style: .success); vm.message = nil }
+            if let text { Haptics.success(); toast = Toast(message: text, style: .success); vm.message = nil }
         }
         .onChange(of: vm.errorMessage) { _, text in
             if let text { toast = Toast(message: text, style: .error); vm.errorMessage = nil }
@@ -52,6 +52,7 @@ struct ExchangeView: View {
             FileShareSheet(url: item.url) { completed in
                 if completed {
                     vm.markSent(count: item.count)
+                    Haptics.success()
                     toast = Toast(message: "Envoyé", style: .success)
                 }
             }
@@ -60,8 +61,6 @@ struct ExchangeView: View {
         .confirmationDialog("Terminer cet événement ?", isPresented: $confirmEnd, titleVisibility: .visible) {
             Button("Terminer") { vm.finishEvent() }
             Button("Annuler", role: .cancel) {}
-        } message: {
-            Text("Les prospects ne pourront plus être ajoutés. Rappelez à l'équipe d'envoyer les siens.")
         }
     }
 
@@ -109,12 +108,10 @@ struct ExchangeView: View {
         }
 
         VStack(alignment: .leading, spacing: Space.m) {
-            Text("Envois reçus\(event.receipts.isEmpty ? "" : " (\(event.receipts.count))")")
-                .font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
-            if event.receipts.isEmpty {
-                Text("Rien pour l'instant. Les agents envoient leurs prospects en fin d'événement.")
-                    .font(.textSub).foregroundStyle(Color.inkSecondary)
-            } else {
+            if !event.receipts.isEmpty {
+                Text("Reçus (\(event.receipts.count))")
+                    .font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
+
                 VStack(spacing: 0) {
                     ForEach(Array(event.receipts.sorted { $0.receivedAt > $1.receivedAt }.enumerated()), id: \.element.id) { index, r in
                         HStack(spacing: Space.m) {
@@ -139,6 +136,21 @@ struct ExchangeView: View {
             }
             .buttonStyle(.secondary)
             .accessibilityIdentifier("importHandover")
+
+            Button {
+                event.importsComplete ? Haptics.tap() : Haptics.success()
+                withAnimation(.curve(Motion.standard)) { vm.toggleImportsComplete() }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: event.importsComplete ? "checkmark.circle.fill" : "circle")
+                        .contentTransition(.symbolEffect(.replace))
+                        .symbolEffect(.bounce, value: event.importsComplete)
+                    Text("Imports terminés")
+                }
+                .foregroundStyle(event.importsComplete ? Color.success : Color.inkPrimary)
+            }
+            .buttonStyle(.secondary)
+            .accessibilityIdentifier("importsComplete")
         }
 
         if !vm.duplicateGroups.isEmpty {
@@ -171,21 +183,22 @@ struct ExchangeView: View {
     @ViewBuilder
     private func agent(_ event: StoredEvent) -> some View {
         VStack(alignment: .leading, spacing: Space.s) {
-            Text("\(vm.mineCount)").font(.numeral(56)).foregroundStyle(Color.inkPrimary)
-            Text("prospect\(vm.mineCount > 1 ? "s" : "") sur ce téléphone").font(.textSub).foregroundStyle(Color.inkSecondary)
-            Rule().padding(.vertical, Space.s)
-            if let sent = event.lastSentAt {
-                Text("Dernier envoi \(Self.relative(sent)) · \(event.lastSentCount) prospect\(event.lastSentCount > 1 ? "s" : "")")
-                    .font(.textFootnote).foregroundStyle(Color.inkSecondary)
-                if vm.newSinceSend > 0 {
-                    Text("\(vm.newSinceSend) nouveau\(vm.newSinceSend > 1 ? "x" : "") depuis")
-                        .font(.textFootnote.weight(.medium)).foregroundStyle(Color.accent)
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                Text("\(vm.mineCount)").font(.numeral(56)).foregroundStyle(Color.inkPrimary)
+                    .contentTransition(.numericText())
+                    .animation(.curve(Motion.standard), value: vm.mineCount)
+                if vm.newSinceSend > 0 && event.lastSentAt != nil {
+                    Text("+\(vm.newSinceSend)").font(.textHeadline).foregroundStyle(Color.accent)
                 }
-            } else {
-                Text("Pas encore envoyé").font(.textFootnote).foregroundStyle(Color.inkSecondary)
             }
-            if let end = event.endsAt {
-                Text("Fin prévue à \(Self.time(end))").font(.textFootnote).foregroundStyle(Color.inkTertiary)
+            Text("prospect\(vm.mineCount > 1 ? "s" : "")").font(.textSub).foregroundStyle(Color.inkSecondary)
+            if let sent = event.lastSentAt {
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
+                    Text(Self.relative(sent)).foregroundStyle(Color.inkSecondary)
+                }
+                .font(.textFootnote)
+                .padding(.top, Space.s)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,13 +209,11 @@ struct ExchangeView: View {
             Button {
                 if let file = vm.makeHandover() { shareItem = ShareItem(url: file.url, count: file.count) }
             } label: {
-                Label("Envoyer à \(event.organizerName)", systemImage: "paperplane")
+                Label(event.organizerName, systemImage: "paperplane")
             }
             .buttonStyle(.primary)
             .disabled(vm.mineCount == 0)
             .accessibilityIdentifier("sendHandover")
-            Text("Le fichier est chiffré : seul \(event.organizerName) peut le lire.")
-                .font(.textFootnote).foregroundStyle(Color.inkTertiary)
         }
     }
 

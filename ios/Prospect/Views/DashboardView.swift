@@ -32,6 +32,8 @@ struct DashboardView: View {
                     .padding(.horizontal, -Space.gutter)
                 } else {
                     titleBlock
+                    importsBanner
+                        .animation(.curve(Motion.standard), value: viewModel.selectedSession?.session.importsComplete)
                     if viewModel.prospects.isEmpty && !viewModel.isLoading {
                         EmptyStateView(title: "Aucun prospect.", message: "Pas encore de chiffres pour cet événement.")
                             .padding(.horizontal, -Space.gutter)
@@ -41,10 +43,12 @@ struct DashboardView: View {
                         if viewModel.filterPrograms.isEmpty { programs }
                         detailsToggle
                         if showDetails {
-                            arrivals
-                            if appState.isAdmin && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty { attendance }
-                            if appState.isAdmin { closing }
-                            members
+                            VStack(alignment: .leading, spacing: Space.xl) {
+                                arrivals
+                                if appState.isAdmin && viewModel.preRegistered > 0 && viewModel.filterPrograms.isEmpty { attendance }
+                                members
+                            }
+                            .transition(.rise)
                         }
                     }
                 }
@@ -167,11 +171,6 @@ struct DashboardView: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PressableStyle(scale: 0.995))
-                if viewModel.hasActiveFilters {
-                    Text("Filtres actifs : chiffres partiels.")
-                        .font(.textFootnote.weight(.semibold))
-                        .foregroundStyle(Color.accent)
-                }
             }
         }
     }
@@ -307,6 +306,31 @@ struct DashboardView: View {
                 Bar(fraction: fraction, color: .inkPrimary)
 
             }
+        }
+    }
+
+    /// Organizer: until every agent's file is imported and confirmed, the numbers are incomplete.
+    @ViewBuilder
+    private var importsBanner: some View {
+        if appState.isAdmin, let s = viewModel.selectedSession, !s.session.importsComplete {
+            Button {
+                Haptics.tap()
+                appState.selectedTab = .exchange
+            } label: {
+                HStack(spacing: Space.m) {
+                    Image(systemName: "tray.and.arrow.down").foregroundStyle(Color.warning)
+                    Text("Imports incomplets").font(.textBody.weight(.medium)).foregroundStyle(Color.inkPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.inkTertiary)
+                }
+                .padding(.horizontal, Space.l)
+                .frame(minHeight: 55)
+                .background(Color.warning.opacity(0.12), in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(PressableStyle(scale: 0.99))
+            .accessibilityIdentifier("importsBanner")
+            .transition(.drop)
         }
     }
 

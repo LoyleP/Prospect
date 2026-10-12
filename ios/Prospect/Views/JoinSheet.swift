@@ -28,7 +28,7 @@ struct JoinSheet: View {
             QRScannerView { code in handle(code) }
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-            LabeledField(title: "Ou coller le lien d'invitation", isFocused: focused, hasError: errorText != nil) {
+            LabeledField(title: "Lien", isFocused: focused, hasError: errorText != nil) {
                 TextField("prospect://join?…", text: $pasted)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()

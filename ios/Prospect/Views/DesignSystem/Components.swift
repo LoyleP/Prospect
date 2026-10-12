@@ -154,7 +154,8 @@ struct PressableStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed ? scale : 1)
             .opacity(configuration.isPressed ? 0.8 : 1)
-            .animation(.curve(0.12), value: configuration.isPressed)
+            // Touch-down answers instantly; only letting go animates back.
+            .animation(configuration.isPressed ? nil : .curve(Motion.micro), value: configuration.isPressed)
     }
 }
 
@@ -163,7 +164,8 @@ struct PressableStyle: ButtonStyle {
 /// A sentence, not an illustration: what's missing, and the one thing to do about it.
 struct EmptyStateView: View {
     let title: String
-    let message: String
+    /// Kept so existing call sites compile; never shown (the title and the action say it all).
+    var message: String = ""
     var actionTitle: String?
     var action: (() -> Void)?
 
@@ -172,12 +174,6 @@ struct EmptyStateView: View {
             Text(title.hasSuffix(".") ? String(title.dropLast()) : title)
                 .font(.textHeadline)
                 .foregroundStyle(Color.inkPrimary)
-            if !message.isEmpty {
-                Text(message)
-                    .font(.textSub)
-                    .foregroundStyle(Color.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             if let actionTitle, let action {
                 Button(actionTitle, action: action)
                     .buttonStyle(.primary)
@@ -255,6 +251,8 @@ struct StatusGroupHeader: View {
             Text("\(count)")
                 .font(.figure(13))
                 .foregroundStyle(Color.inkTertiary)
+                .contentTransition(.numericText())
+                .animation(.curve(Motion.standard), value: count)
             Spacer()
             if let onAdd {
                 Button { Haptics.tap(); onAdd() } label: {
@@ -286,6 +284,7 @@ struct BottomTabBar: View {
 
     @Binding var selection: AppState.MainTab
     let items: [Item]
+    @Namespace private var pill
 
     var body: some View {
         HStack(spacing: 2) {
@@ -294,15 +293,16 @@ struct BottomTabBar: View {
                 Button {
                     guard !selected else { return }
                     Haptics.selection()
-                    withAnimation(.curve(0.25)) { selection = item.tab }
+                    withAnimation(.curve(Motion.tab)) { selection = item.tab }
                 } label: {
                     Image(systemName: item.icon)
                         .font(.system(size: 20, weight: .regular))
                         .symbolVariant(selected ? .fill : .none)
+                        .contentTransition(.symbolEffect(.replace))
                         .foregroundStyle(selected ? Color.inkPrimary : Color.inkTertiary)
                         .frame(maxWidth: .infinity).frame(height: 55)
                         .background {
-                            if selected { Capsule().fill(Color.surfaceCard2) }
+                            if selected { Capsule().fill(Color.surfaceCard2).matchedGeometryEffect(id: "pill", in: pill) }
                         }
                         .contentShape(Rectangle())
                 }

@@ -89,7 +89,7 @@ final class EventExchange: @unchecked Sendable {
                     status: .enCours, isArchived: false, preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0,
                     programObjectives: [:], createdAt: ProspectService.iso(), organizerName: invitation.organizerName,
                     organizerPublicKey: invitation.publicKey, isOrganizer: false, prospects: [], receipts: [],
-                    lastSentAt: nil, lastSentCount: 0
+                    lastSentAt: nil, lastSentCount: 0, importsComplete: true
                 ))
             }
             return invitation.eventId
@@ -122,6 +122,14 @@ final class EventExchange: @unchecked Sendable {
 
     // MARK: Import (organizer)
 
+    func setImportsComplete(eventId: UUID, _ complete: Bool) {
+        store.write { state in
+            if let i = state.events.firstIndex(where: { $0.id == eventId && $0.isOrganizer }) {
+                state.events[i].importsComplete = complete
+            }
+        }
+    }
+
     /// Reads which event a file belongs to, without decrypting it.
     func eventId(ofHandover data: Data) -> UUID? { Handover.envelope(of: data)?.event }
 
@@ -143,7 +151,10 @@ final class EventExchange: @unchecked Sendable {
         }
         let merge: MergeResult = store.write { state in
             guard let i = state.events.firstIndex(where: { $0.id == event.id }) else { return MergeResult() }
-            return HandoverMerge.merge(payload, into: &state.events[i], now: now)
+            let result = HandoverMerge.merge(payload, into: &state.events[i], now: now)
+            // New data arrived: the organizer has to confirm again that nothing else is missing.
+            if result.added > 0 || result.updated > 0 { state.events[i].importsComplete = false }
+            return result
         }
         return ImportOutcome(eventName: event.name, agentName: payload.agentName, count: payload.prospects.count, merge: merge)
     }

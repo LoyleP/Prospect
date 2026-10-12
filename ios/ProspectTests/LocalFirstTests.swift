@@ -98,7 +98,7 @@ final class LocalFirstTests: XCTestCase {
         var event = StoredEvent(id: UUID(), name: "Salon", date: "2026-11-14", endsAt: nil, status: .enCours, isArchived: false,
                                 preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:], createdAt: "2026-11-14T08:00:00.000Z",
                                 organizerName: "Camille", organizerPublicKey: "", isOrganizer: true, prospects: [], receipts: [],
-                                lastSentAt: nil, lastSentCount: 0)
+                                lastSentAt: nil, lastSentCount: 0, importsComplete: false)
         let a = TestData.prospect(sessionId: event.id, prenom: "Léa")
         var edited = a; edited.statut = Statut.rdvInfo.rawValue; edited.updatedAt = "2026-11-14T11:00:00.000Z"
         let payload1 = Handover.Payload(agentId: UUID(), agentName: "Hugo", sentAt: Date(), prospects: [a])
@@ -215,5 +215,27 @@ final class LocalFirstTests: XCTestCase {
         let stored = agent.store.read { $0.events.first }
         XCTAssertEqual(stored?.lastSentCount, 4)
         XCTAssertNotNil(stored?.lastSentAt)
+    }
+
+    func testImportsStayIncompleteUntilTheOrganizerConfirmsAndReopenOnNewData() async throws {
+        let organizer = phone(role: .admin, name: "Camille")
+        let event = try await organizer.service.createSession(name: "Salon", date: Date())
+        XCTAssertFalse(event.session.importsComplete, "a new event waits for imports")
+
+        organizer.exchange.setImportsComplete(eventId: event.id, true)
+        let confirmed = try await organizer.service.fetchSessionSummaries()
+        XCTAssertTrue(confirmed.first?.session.importsComplete == true)
+
+        // A late file reopens the question.
+        let agent = phone(role: .agent, name: "Hugo")
+        try agent.exchange.join(try organizer.exchange.invitation(for: event.id))
+        _ = try await agent.service.createProspect(sessionId: event.id, input("Léa", "Durand"))
+        _ = try organizer.exchange.importHandover(try agent.exchange.handoverFile(for: event.id).data)
+        let reopened = try await organizer.service.fetchSessionSummaries()
+        XCTAssertTrue(reopened.first?.session.importsComplete == false)
+
+        // An agent's own copy is never "incomplete".
+        let agentEvents = try await agent.service.fetchSessionSummaries()
+        XCTAssertTrue(agentEvents.first?.session.importsComplete == true)
     }
 }

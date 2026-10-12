@@ -53,7 +53,7 @@ struct EventEditorSheet: View {
                             get: { endsAt != nil },
                             set: { endsAt = $0 ? Self.merge(time: Self.defaultEnd(on: date), into: date) : nil }
                         )) {
-                            Text("Rappeler d'envoyer les prospects").font(.textBody).foregroundStyle(Color.inkPrimary)
+                            Label("Rappel de fin", systemImage: "bell").font(.textBody).foregroundStyle(Color.inkPrimary)
                         }
                         .tint(Color.accent)
                         if let end = endsAt {
@@ -75,9 +75,6 @@ struct EventEditorSheet: View {
                                 .foregroundStyle(Color.inkSecondary)
                                 .tracking(0.6)
                             UnderlineTabs(options: SessionStatut.allCases, selection: $status) { $0.label }
-                            Text("Un événement terminé n'accepte plus de prospects.")
-                                .font(.textFootnote)
-                                .foregroundStyle(Color.inkTertiary)
                         }
                     }
                 }

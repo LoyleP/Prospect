@@ -278,7 +278,7 @@ struct DebugMenuView: View {
                 ("Statistiques", "chart.bar.fill", .dashboard),
                 ("Archive", "archivebox", .archive),
                 (appState.isAdmin ? "Collecte" : "Envoi", "tray.and.arrow.down", .exchange),
-            ], id: \.0) { title, icon, tab in
+            ].filter { appState.isAdmin || $0.2 != .dashboard }, id: \.0) { title, icon, tab in
                 Button {
                     appState.selectedTab = tab
                     dismiss()

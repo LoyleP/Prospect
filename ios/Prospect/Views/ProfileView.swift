@@ -40,10 +40,6 @@ struct ProfileView: View {
 
                 Button("Réinitialiser cet appareil") { showReset = true }
                     .buttonStyle(.secondary)
-
-                Text("Vos données restent sur ce téléphone. Personne d'autre, développeur compris, ne peut les lire.")
-                    .font(.textFootnote)
-                    .foregroundStyle(Color.inkTertiary)
             }
             .padding(.horizontal, Space.gutter)
             .padding(.top, Space.xl)
@@ -79,8 +75,6 @@ struct ProfileView: View {
                 appState.resetDevice()
             }
             Button("Annuler", role: .cancel) {}
-        } message: {
-            Text("Tous les événements et prospects de ce téléphone seront supprimés. Envoyez-les d'abord à l'organisateur.")
         }
         .alert("Erreur", isPresented: Binding(
             get: { viewModel.errorMessage != nil },

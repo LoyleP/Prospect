@@ -241,6 +241,8 @@ struct ProspectListView: View {
 
     private var summaryLine: String {
         guard total > 0 else { return "Aucun prospect" }
+        // Agents see a count only: figures and rates belong to the organizer.
+        guard appState.isAdmin else { return "\(total) prospect\(total > 1 ? "s" : "")" }
         return "\(total) prospect\(total > 1 ? "s" : "") · \(rdvCount) RDV · \(rate) %"
     }
 

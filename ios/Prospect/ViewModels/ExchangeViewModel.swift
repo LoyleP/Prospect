@@ -56,6 +56,12 @@ final class ExchangeViewModel {
         }
     }
 
+    func toggleImportsComplete() {
+        guard let e = selected else { return }
+        exchange.setImportsComplete(eventId: e.id, !e.importsComplete)
+        load()
+    }
+
     func finishEvent() {
         guard let id = selected?.id else { return }
         store.write { state in

@@ -5,8 +5,10 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(AppState.self) private var appState
 
-    private enum Step { case choose, organize, join }
+    private enum Step: Int { case choose, organize, join }
     @State private var step: Step = .choose
+    /// Which way the last step change went, so the next screen enters from the side we are heading to.
+    @State private var forward = true
     @State private var name = ""
     @State private var eventLabel = "Événement"
     @State private var customLabel = ""
@@ -29,19 +31,21 @@ struct OnboardingView: View {
             PaperBackground()
             VStack(alignment: .leading, spacing: 0) {
                 header
-                switch step {
-                case .choose:   choose
-                case .organize: organize
-                case .join:     join
+                ZStack(alignment: .top) {
+                    switch step {
+                    case .choose:   choose.transition(.axis(forward: forward))
+                    case .organize: organize.transition(.axis(forward: forward))
+                    case .join:     join.transition(.axis(forward: forward))
+                    }
                 }
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, Space.l)
             .padding(.top, Space.l)
         }
-        .animation(.curve(0.3), value: step)
-        .animation(.curve(0.25), value: invitation)
-        .animation(.curve(0.2), value: errorText)
+        .animation(.curve(Motion.standard), value: step)
+        .animation(.curve(Motion.standard), value: invitation)
+        .animation(.curve(Motion.micro), value: errorText)
         .onAppear(perform: applyIntent)
         .onChange(of: appState.pendingInvitation) { _, _ in applyIntent() }
         .sheet(isPresented: $showScanner) { scanner }
@@ -74,31 +78,22 @@ struct OnboardingView: View {
     // MARK: Choose
 
     private var choose: some View {
-        VStack(alignment: .leading, spacing: Space.xl) {
-            VStack(alignment: .leading, spacing: Space.s) {
-                Text("Vos prospects restent sur vos téléphones")
-                    .font(.displayL)
-                    .foregroundStyle(Color.inkPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text("Aucun compte, aucun serveur.")
-                    .font(.textBody)
-                    .foregroundStyle(Color.inkSecondary)
+        VStack(spacing: Space.s) {
+            choiceRow(icon: "flag", title: "Organiser") {
+                go(.organize); focused = .name
             }
-            VStack(spacing: Space.s) {
-                choiceRow(icon: "flag", title: "Organiser un événement", subtitle: "Je récupère les prospects de l'équipe") {
-                    step = .organize; focused = .name
-                }
-                .accessibilityIdentifier("organize")
-                choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre un événement", subtitle: "Je scanne l'invitation de l'organisateur") {
-                    step = .join
-                }
-                .accessibilityIdentifier("join")
+            .accessibilityIdentifier("organize")
+            .appears(0)
+            choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre") {
+                go(.join)
             }
+            .accessibilityIdentifier("join")
+            .appears(1)
         }
-        .padding(.top, Space.l)
+        .padding(.top, Space.xxl)
     }
 
-    private func choiceRow(icon: String, title: String, subtitle: String, action: @escaping () -> Void) -> some View {
+    private func choiceRow(icon: String, title: String, action: @escaping () -> Void) -> some View {
         Button { Haptics.tap(); action() } label: {
             HStack(spacing: Space.m) {
                 Image(systemName: icon)
@@ -106,17 +101,14 @@ struct OnboardingView: View {
                     .foregroundStyle(Color.accent)
                     .frame(width: 44, height: 44)
                     .background(Color.accent.opacity(0.14), in: Circle())
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.textHeadline).foregroundStyle(Color.inkPrimary)
-                    Text(subtitle).font(.textFootnote).foregroundStyle(Color.inkSecondary)
-                }
+                Text(title).font(.textHeadline).foregroundStyle(Color.inkPrimary)
                 Spacer(minLength: 0)
                 Image(systemName: "chevron.right")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.inkTertiary)
             }
             .padding(.horizontal, Space.l)
-            .frame(minHeight: 80)
+            .frame(minHeight: 72)
             .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
             .contentShape(Rectangle())
         }
@@ -136,7 +128,7 @@ struct OnboardingView: View {
                     .accessibilityIdentifier("organizerName")
             }
             VStack(alignment: .leading, spacing: Space.s) {
-                Text("Vos événements s'appellent").font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
+                Text("Événements").font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
                 PillFlowLayout(spacing: Space.s) {
                     ForEach(Self.labels, id: \.self) { label in
                         ChoiceChip(title: label, isSelected: customLabel.isEmpty && eventLabel == label) {
@@ -168,7 +160,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: Space.l) {
             Text("Rejoindre").font(.displayL).foregroundStyle(Color.inkPrimary)
             if let invitation {
-                eventCard(invitation)
+                eventCard(invitation).transition(.rise)
                 LabeledField(title: "Votre nom", isFocused: focused == .name) {
                     TextField("Hugo Petit", text: $name)
                         .textContentType(.name)
@@ -184,18 +176,18 @@ struct OnboardingView: View {
                     .padding(.bottom, Space.s)
             } else {
                 Button { showScanner = true } label: {
-                    Label("Scanner l'invitation", systemImage: "qrcode.viewfinder")
+                    Label("Scanner", systemImage: "qrcode.viewfinder")
                 }
                 .buttonStyle(.primary)
                 .accessibilityIdentifier("scan")
-                LabeledField(title: "Ou coller le lien d'invitation", isFocused: focused == .paste, hasError: errorText != nil) {
+                LabeledField(title: "Lien", isFocused: focused == .paste, hasError: errorText != nil) {
                     TextField("prospect://join?…", text: $pasted)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
                         .focused($focused, equals: .paste)
                         .onChange(of: pasted) { _, text in tryInvitation(text) }
                 }
-                if let errorText { InlineError(text: errorText) }
+                if let errorText { InlineError(text: errorText).transition(.drop) }
             }
         }
         .frame(maxHeight: .infinity)
@@ -204,7 +196,7 @@ struct OnboardingView: View {
     private func eventCard(_ i: Invitation) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(i.name).font(.textHeadline).foregroundStyle(Color.inkPrimary)
-            Text("Organisé par \(i.organizerName)").font(.textFootnote).foregroundStyle(Color.inkSecondary)
+            Text(i.organizerName).font(.textFootnote).foregroundStyle(Color.inkSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(Space.l)
@@ -251,8 +243,13 @@ struct OnboardingView: View {
             invitation = nil; pasted = ""
             appState.pendingInvitation = nil
         } else {
-            step = .choose
+            go(.choose)
         }
+    }
+
+    private func go(_ next: Step) {
+        forward = next.rawValue > step.rawValue
+        withAnimation(.curve(Motion.standard)) { step = next }
     }
 
     private func tryInvitation(_ text: String, fromScan: Bool = false) {

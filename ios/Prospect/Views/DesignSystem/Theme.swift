@@ -30,6 +30,77 @@ extension Animation {
     }
 }
 
+/// Durations by how much changes on screen (motion guidance: small ≈ 150-200 ms, standard ≈ 300 ms,
+/// full screen ≈ 375-400 ms). Things that leave take a little less time than things that arrive.
+enum Motion {
+    static let micro = 0.18
+    /// Switching tabs happens all the time: brief and small.
+    static let tab = 0.22
+    static let standard = 0.3
+    static let large = 0.4
+    static let exit = 0.24
+    /// Gap between items that arrive together. Kept tiny: staggering must not make people wait.
+    static let stagger = 0.05
+}
+
+/// A transition is never a bare fade: it also moves or scales from where the thing comes from.
+/// With "Reduce Motion" on, the movement is dropped and only the fade stays.
+private struct Shift: ViewModifier {
+    var x: CGFloat = 0
+    var y: CGFloat = 0
+    var scale: CGFloat = 1
+    var opacity: Double = 1
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(opacity)
+            .scaleEffect(reduceMotion ? 1 : scale)
+            .offset(x: reduceMotion ? 0 : x, y: reduceMotion ? 0 : y)
+    }
+}
+
+extension AnyTransition {
+    static func shift(x: CGFloat = 0, y: CGFloat = 0, scale: CGFloat = 1) -> AnyTransition {
+        .modifier(active: Shift(x: x, y: y, scale: scale, opacity: 0), identity: Shift())
+    }
+
+    /// Content that arrives from below and settles.
+    static var rise: AnyTransition { .shift(y: 14, scale: 0.985) }
+    /// Something that appears out of a point (the add button).
+    static var pop: AnyTransition { .shift(scale: 0.6) }
+    /// A banner that slides in from the top edge it belongs to.
+    static var drop: AnyTransition { .shift(y: -16) }
+
+    /// Shared axis (horizontal): the next step enters from the side the person is heading to, the previous one leaves the other way.
+    static func axis(forward: Bool) -> AnyTransition {
+        .asymmetric(
+            insertion: .shift(x: forward ? 24 : -24),
+            removal: .shift(x: forward ? -16 : 16)
+        )
+    }
+}
+
+/// Staggered entrance when a screen's content first shows: each item rises a little after the previous one.
+private struct Appears: ViewModifier {
+    let order: Int
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(y: shown || reduceMotion ? 0 : 16)
+            .onAppear {
+                withAnimation(.curve(Motion.standard).delay(Double(order) * Motion.stagger)) { shown = true }
+            }
+    }
+}
+
+extension View {
+    func appears(_ order: Int = 0) -> some View { modifier(Appears(order: order)) }
+}
+
 /// Light, intentional haptics. Always prefer these over ad-hoc generators.
 @MainActor
 enum Haptics {

@@ -9,10 +9,6 @@ struct InvitationCard: View {
     var body: some View {
         VStack(spacing: Space.l) {
             QRCodeView(text: url.absoluteString, size: 220)
-            Text("Les agents scannent ce code avec Prospect")
-                .font(.textSub)
-                .foregroundStyle(Color.inkSecondary)
-                .multilineTextAlignment(.center)
             ShareLink(item: url, subject: Text(eventName), message: Text("Rejoins « \(eventName) » sur Prospect")) {
                 Label("Partager le lien", systemImage: "square.and.arrow.up")
             }
@@ -49,9 +45,6 @@ struct InvitationSheet: View {
             }
             if let url = try? appState.exchange.invitation(for: eventId).url {
                 InvitationCard(url: url, eventName: eventName)
-            } else {
-                Text("Cette invitation n'est disponible que sur le téléphone de l'organisateur.")
-                    .font(.textSub).foregroundStyle(Color.inkSecondary)
             }
             Spacer(minLength: 0)
         }

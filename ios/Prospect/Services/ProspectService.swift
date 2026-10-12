@@ -126,7 +126,7 @@ final class ProspectService: ProspectServiceProtocol, @unchecked Sendable {
             id: id, name: name, date: Session.isoDay(date), endsAt: nil, status: .enCours, isArchived: false,
             preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:], createdAt: Self.iso(),
             organizerName: identity.displayName, organizerPublicKey: key.publicKey.rawRepresentation.base64EncodedString(),
-            isOrganizer: true, prospects: [], receipts: [], lastSentAt: nil, lastSentCount: 0
+            isOrganizer: true, prospects: [], receipts: [], lastSentAt: nil, lastSentCount: 0, importsComplete: false
         )
         store.write { $0.events.append(event) }
         return summary(event)

@@ -257,8 +257,6 @@ private struct ProgramEditor: View {
                         .padding(.top, Space.s)
                         .confirmationDialog("Supprimer ce programme ?", isPresented: $confirmDelete, titleVisibility: .visible) {
                             Button("Supprimer", role: .destructive) { Task { await perform(onDelete) } }
-                        } message: {
-                            Text("Les prospects concernés sont conservés, sans programme.")
                         }
                 }
             }

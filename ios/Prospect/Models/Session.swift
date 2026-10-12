@@ -32,6 +32,8 @@ struct Session: Identifiable, Equatable, Hashable, Sendable {
     let createdAt: String
     /// When agents are reminded to send their prospects to the organizer.
     var endsAt: Date? = nil
+    /// Organizer only: false while agents' files may still be missing.
+    var importsComplete: Bool = true
 
     var displayDate: Date? { isoDayFormatter.date(from: date) }
 

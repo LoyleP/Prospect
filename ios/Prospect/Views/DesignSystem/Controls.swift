@@ -17,8 +17,8 @@ struct PrimaryButtonStyle: ButtonStyle {
             .background(Color.accent, in: RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
             .opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.26)
             .scaleEffect(configuration.isPressed ? 0.99 : 1)
-            .animation(.curve(0.12), value: configuration.isPressed)
-            .animation(.curve(0.2), value: isEnabled)
+            .animation(configuration.isPressed ? nil : .curve(Motion.micro), value: configuration.isPressed)
+            .animation(.curve(Motion.micro), value: isEnabled)
             .sensoryFeedback(.impact(weight: .light), trigger: configuration.isPressed) { _, pressed in pressed }
     }
 }
@@ -36,6 +36,7 @@ struct SecondaryButtonStyle: ButtonStyle {
             .frame(height: 55)
             .background(configuration.isPressed ? Color.rule : Color.surfaceCard2, in: RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
             .opacity(isEnabled ? 1 : 0.4)
+            .animation(configuration.isPressed ? nil : .curve(Motion.micro), value: configuration.isPressed)
     }
 }
 

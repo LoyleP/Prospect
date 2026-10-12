@@ -90,8 +90,6 @@ struct SessionListView: View {
         ) {
             Button("Supprimer", role: .destructive) { Task { await vm.confirmDelete() } }
             Button("Annuler", role: .cancel) { vm.sessionToDelete = nil }
-        } message: {
-            Text("Tous les prospects de cet événement seront supprimés de ce téléphone. Envoyez-les d'abord si besoin.")
         }
         .alert("Erreur", isPresented: Binding(
             get: { vm.errorMessage != nil },

@@ -42,6 +42,8 @@ struct StoredEvent: Codable, Identifiable, Equatable, Sendable {
     /// Agent side: when the prospects were last shared, and how many there were.
     var lastSentAt: Date?
     var lastSentCount: Int
+    /// Organizer side: the organizer confirmed that every agent's file has been imported.
+    var importsComplete: Bool
 
     var session: Session {
         var s = Session(
@@ -51,6 +53,8 @@ struct StoredEvent: Codable, Identifiable, Equatable, Sendable {
             createdAt: createdAt
         )
         s.endsAt = endsAt
+        // Only the organizer waits for imports; an agent's copy is never "incomplete".
+        s.importsComplete = isOrganizer ? importsComplete : true
         return s
     }
 
