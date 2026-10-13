@@ -19,6 +19,8 @@ final class DebugOverlay {
     /// Idempotent. Call once the app has a window scene (ContentView does, on appear).
     func install(appState: AppState) {
         self.appState = appState
+        // `-debugHideOverlay`: clean screenshots (the demo data stays, only the floating button goes).
+        guard !ProcessInfo.processInfo.arguments.contains("-debugHideOverlay") else { return }
         guard window == nil,
               let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first
         else { return }

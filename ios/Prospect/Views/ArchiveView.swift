@@ -64,6 +64,7 @@ struct ArchiveView: View {
             Text(viewModel.errorMessage ?? "")
         }
         .task { await viewModel.load() }
+        .onChange(of: appState.selectedTab) { _, tab in if tab == .archive { Task { await viewModel.load() } } }
         .refreshable { await viewModel.load() }
     }
 }

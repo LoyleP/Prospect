@@ -119,6 +119,11 @@ struct DashboardView: View {
             viewModel.programs = appState.programs
             await viewModel.loadSessions()
         }
+        // Every tab stays alive: refresh when this one is opened (a nearby import or "Imports terminés" happened elsewhere).
+        .onChange(of: appState.selectedTab) { _, tab in
+            guard tab == .dashboard else { return }
+            Task { viewModel.programs = appState.programs; await viewModel.loadSessions() }
+        }
     }
 
     // MARK: - Header
