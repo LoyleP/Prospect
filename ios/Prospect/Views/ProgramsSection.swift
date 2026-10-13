@@ -13,7 +13,7 @@ struct ProgramsSection: View {
     private let service: ProspectServiceProtocol = ProspectService.current
 
     var body: some View {
-        NumberedSection(number: "", title: "Programmes") {
+        NumberedSection(number: "", title: L("Programs")) {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(appState.programs.enumerated()), id: \.element.id) { index, program in
                     HStack(spacing: Space.m) {
@@ -43,7 +43,7 @@ struct ProgramsSection: View {
 
                 HStack(spacing: Space.l) {
                     Button { showNewProgram = true } label: {
-                        Label("Ajouter", systemImage: "plus")
+                        Label(L("Add"), systemImage: "plus")
                             .font(.textSub.weight(.semibold))
                             .frame(minHeight: 55)
                             .contentShape(Rectangle())
@@ -59,7 +59,7 @@ struct ProgramsSection: View {
                                 .frame(width: 55, height: 55)
                                 .contentShape(Rectangle())
                         }
-                        .accessibilityLabel(reordering ? "Terminer" : "Réordonner")
+                        .accessibilityLabel(reordering ? L("End") : L("Reorder"))
                     }
                 }
                 .foregroundStyle(Color.inkPrimary)
@@ -89,7 +89,7 @@ struct ProgramsSection: View {
                 onDelete: nil
             )
         }
-        .alert("Erreur", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+        .alert(L("Error"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK") { errorMessage = nil }
         } message: {
             Text(errorMessage ?? "")
@@ -153,18 +153,18 @@ private struct ProgramEditor: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                Text(program == nil ? "Nouveau\nprogramme." : "Modifier\nle programme.")
+                Text(program == nil ? L("New\nprogram.") : L("Edit\nprogram."))
                     .font(.displayXL)
                     .foregroundStyle(Color.inkPrimary)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.trailing, 44)
 
-                LabeledField(title: "Nom", isFocused: nameFocused) {
-                    TextField("ex. Informatique", text: $name).focused($nameFocused)
+                LabeledField(title: L("Last name"), isFocused: nameFocused) {
+                    TextField(L("e.g. Computer Science"), text: $name).focused($nameFocused)
                 }
 
                 VStack(alignment: .leading, spacing: Space.m) {
-                    Text("Couleur")
+                    Text(L("Color"))
                         .font(.textCaption.weight(.medium))
                         .foregroundStyle(Color.inkTertiary)
                     LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: Space.s), count: 5), spacing: Space.s) {
@@ -197,11 +197,11 @@ private struct ProgramEditor: View {
                 if let errorText { InlineError(text: errorText) }
 
                 if let onDelete, program != nil {
-                    Button("Supprimer ce programme") { confirmDelete = true }
+                    Button(L("Delete this program")) { confirmDelete = true }
                         .buttonStyle(.secondary(tint: .error))
                         .padding(.top, Space.s)
-                        .confirmationDialog("Supprimer ce programme ?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                            Button("Supprimer", role: .destructive) { Task { await perform(onDelete) } }
+                        .confirmationDialog(L("Delete this program?"), isPresented: $confirmDelete, titleVisibility: .visible) {
+                            Button(L("Delete"), role: .destructive) { Task { await perform(onDelete) } }
                         }
                 }
             }
@@ -216,7 +216,7 @@ private struct ProgramEditor: View {
                 Task { await perform { try await onSave(name.trimmingCharacters(in: .whitespaces), color) } }
             } label: {
                 ZStack {
-                    Text("Enregistrer").opacity(isSaving ? 0 : 1)
+                    Text(L("Save")).opacity(isSaving ? 0 : 1)
                     if isSaving { ProgressView().tint(Color.onInk) }
                 }
             }
@@ -238,7 +238,7 @@ private struct ProgramEditor: View {
                     .contentShape(Rectangle())
             }
             .padding(Space.l)
-            .accessibilityLabel("Fermer")
+            .accessibilityLabel(L("Close"))
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)

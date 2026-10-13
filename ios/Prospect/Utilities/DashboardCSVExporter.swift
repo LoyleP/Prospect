@@ -19,14 +19,14 @@ enum DashboardCSVExporter {
 
         // Header
         rows += [
-            escape("Tableau de bord — \(session.name) — \(session.formattedDate)"),
+            escape(L("Dashboard — \(session.name) — \(session.formattedDate)")),
             "",
             // Résumé
-            row("RÉSUMÉ", ""),
+            row(L("SUMMARY"), ""),
             row("Total prospects", "\(total)"),
             "",
             // Par programme
-            row("PAR PROGRAMME", "Prospects", "Pourcentage")
+            row(L("BY PROGRAM"), "Prospects", L("Percentage"))
         ]
         for item in byProgram {
             let pct = totalProgram > 0
@@ -37,7 +37,7 @@ enum DashboardCSVExporter {
 
         rows += [
             "",
-            row("PAR STATUT", "Prospects")
+            row(L("BY STATUS"), "Prospects")
         ]
         for item in byStatut {
             rows.append(row(item.statut.exportLabel, "\(item.count)"))
@@ -45,7 +45,7 @@ enum DashboardCSVExporter {
 
         rows += [
             "",
-            row("PAR MEMBRE", "Prospects")
+            row(L("BY MEMBER"), "Prospects")
         ]
         for item in byAgent {
             rows.append(row(item.agentNom, "\(item.count)"))
@@ -54,7 +54,7 @@ enum DashboardCSVExporter {
         if !closing.isEmpty {
             rows += [
                 "",
-                row("CLOSING", "Programme", "Rdv d'information", "Rdv d'admission", "Total")
+                row("CLOSING", L("Program"), L("Info meetings"), L("Admission meetings"), "Total")
             ]
             for item in closing {
                 rows.append(row(item.cfNom, programName(item.programId), "\(item.rdvInfo)", "\(item.rdvAdmission)", "\(item.total)"))

@@ -18,8 +18,8 @@ struct ArchiveView: View {
                 ForEach(0..<5, id: \.self) { _ in SkeletonRow().registerRow() }
             } else if viewModel.prospects.isEmpty {
                 EmptyStateView(
-                    title: "Archive vide.",
-                    message: "Glissez un prospect vers la droite pour le restaurer."
+                    title: L("Archive is empty."),
+                    message: L("Swipe a prospect right to restore it.")
                 )
                 .listRowInsets(EdgeInsets())
                 .listRowSeparator(.hidden)
@@ -34,10 +34,10 @@ struct ArchiveView: View {
                                     Haptics.success()
                                     Task {
                                         await viewModel.restore(prospect)
-                                        toast = Toast(message: "Prospect restauré", style: .success)
+                                        toast = Toast(message: L("Prospect restored"), style: .success)
                                     }
                                 } label: {
-                                    Label("Restaurer", systemImage: "arrow.uturn.left")
+                                    Label(L("Restore"), systemImage: "arrow.uturn.left")
                                 }
                                 .tint(Color.success)
                             }
@@ -55,7 +55,7 @@ struct ArchiveView: View {
         .background(PaperBackground())
         .toolbar(.hidden, for: .navigationBar)
         .toast($toast)
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {

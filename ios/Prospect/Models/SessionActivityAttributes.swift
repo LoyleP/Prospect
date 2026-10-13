@@ -7,7 +7,9 @@ import Foundation
 struct SessionActivityAttributes: ActivityAttributes {
     // Stays constant for the lifetime of the activity.
     let sessionName: String
-    let sessionDate: String   // pre-formatted, e.g. "15 mars 2026"
+    let sessionDate: String   // pre-formatted, e.g. "March 15, 2026"
+    /// The app's language ("en" or "fr"), so the lock screen text matches the app and not only the phone.
+    let language: String
 
     // Updated in real time as prospects are added/modified.
     struct ContentState: Codable, Hashable {

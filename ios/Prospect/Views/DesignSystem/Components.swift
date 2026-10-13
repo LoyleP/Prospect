@@ -9,19 +9,20 @@ extension Statut {
     /// Full label for exports. The stored value of the first two stages is still "Curieux" / "Intéressé".
     var exportLabel: String {
         switch self {
-        case .curieux:   return "Découverte"
-        case .interesse: return "Projet défini"
-        default:         return rawValue
+        case .curieux:      return L("Discovery")
+        case .interesse:    return L("Project defined")
+        case .rdvInfo:      return L("Info meeting booked")
+        case .rdvAdmission: return L("Admission meeting booked")
         }
     }
 
     /// Compact label for stamps.
     var shortLabel: String {
         switch self {
-        case .curieux:      return "Découverte"
-        case .interesse:    return "Projet défini"
-        case .rdvInfo:      return "RDV info"
-        case .rdvAdmission: return "RDV admission"
+        case .curieux:      return L("Discovery")
+        case .interesse:    return L("Project defined")
+        case .rdvInfo:      return L("Info meeting")
+        case .rdvAdmission: return L("Admission meeting")
         }
     }
 }
@@ -70,7 +71,7 @@ struct StatusStamp: View {
     var body: some View {
         StatusLabel(text: statut.shortLabel, color: statut.color)
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("Statut : \(statut.rawValue)")
+            .accessibilityLabel(L("Status: \(statut.shortLabel)"))
     }
 }
 
@@ -90,7 +91,7 @@ struct EventStatusStamp: View {
 
     var body: some View {
         if status == .enCours {
-            Stamp(text: "En direct", color: status.tint, showsLiveDot: true)
+            Stamp(text: L("Live"), color: status.tint, showsLiveDot: true)
         } else {
             StatusLabel(text: status.label, color: status.tint, showsDot: false)
         }
@@ -273,7 +274,7 @@ struct StatusGroupHeader: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Ajouter : \(statut.shortLabel)")
+                .accessibilityLabel(L("Add: \(statut.shortLabel)"))
             }
         }
         .padding(.top, Space.s)
@@ -408,7 +409,7 @@ struct QuantityControl: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(symbol == "plus" ? "Augmenter" : "Diminuer")
+        .accessibilityLabel(symbol == "plus" ? L("Increase") : L("Decrease"))
     }
 }
 

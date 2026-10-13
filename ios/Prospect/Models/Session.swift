@@ -11,12 +11,12 @@ private let isoDayFormatter: DateFormatter = {
     return f
 }()
 
-private let longDateFormatter: DateFormatter = {
+private let longDateFormatter = PerLanguage<DateFormatter> { language in
     let f = DateFormatter()
-    f.locale = Locale(identifier: "fr_FR")
+    f.locale = language.locale
     f.dateStyle = .long
     return f
-}()
+}
 
 struct Session: Identifiable, Equatable, Hashable, Sendable {
     let id: UUID
@@ -39,7 +39,7 @@ struct Session: Identifiable, Equatable, Hashable, Sendable {
 
     var formattedDate: String {
         guard let d = displayDate else { return date }
-        return longDateFormatter.string(from: d)
+        return longDateFormatter.value.string(from: d)
     }
 
     static func isoDay(_ date: Date) -> String { isoDayFormatter.string(from: date) }

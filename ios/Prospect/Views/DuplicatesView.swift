@@ -12,7 +12,7 @@ struct DuplicatesView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
                 HStack {
-                    Text("Doublons").font(.displayS).foregroundStyle(Color.inkPrimary)
+                    Text(L("Duplicates")).font(.displayS).foregroundStyle(Color.inkPrimary)
                     Spacer()
                     Button { dismiss() } label: {
                         Image(systemName: "xmark")
@@ -23,10 +23,10 @@ struct DuplicatesView: View {
                             .frame(width: 55, height: 55)
                             .contentShape(Rectangle())
                     }
-                    .accessibilityLabel("Fermer")
+                    .accessibilityLabel(L("Close"))
                 }
                 if groups.isEmpty {
-                    Text("Aucun doublon.").font(.textSub).foregroundStyle(Color.inkSecondary)
+                    Text(L("No duplicates.")).font(.textSub).foregroundStyle(Color.inkSecondary)
                 }
                 ForEach(Array(groups.enumerated()), id: \.offset) { _, group in
                     VStack(spacing: 0) {
@@ -38,13 +38,13 @@ struct DuplicatesView: View {
                                 }
                                 Spacer()
                                 if index > 0 {
-                                    Button("Archiver") { Haptics.tap(); onArchive(p) }
+                                    Button(L("Archive")) { Haptics.tap(); onArchive(p) }
                                         .font(.textSub.weight(.medium))
                                         .foregroundStyle(Color.accent)
                                         .frame(minWidth: 55, minHeight: 55)
                                         .contentShape(Rectangle())
                                 } else {
-                                    Text("Garder").font(.textFootnote).foregroundStyle(Color.inkTertiary)
+                                    Text(L("Keep")).font(.textFootnote).foregroundStyle(Color.inkTertiary)
                                 }
                             }
                             .padding(.horizontal, Space.l)

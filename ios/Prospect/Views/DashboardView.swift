@@ -26,8 +26,8 @@ struct DashboardView: View {
                     ProgressView().frame(maxWidth: .infinity).padding(.top, 60)
                 } else if viewModel.sessions.isEmpty {
                     EmptyStateView(
-                        title: "Rien à compter.",
-                        message: "Les chiffres apparaissent dès qu'un \(appState.eventLabel.lowercased()) existe et que des prospects sont enregistrés."
+                        title: L("Nothing to count."),
+                        message: L("Figures appear once prospects are recorded for the current \(appState.eventLabel.lowercased()).")
                     )
                     .padding(.horizontal, -Space.gutter)
                 } else {
@@ -35,7 +35,7 @@ struct DashboardView: View {
                     importsBanner
                         .animation(.curve(Motion.standard), value: viewModel.selectedSession?.session.importsComplete)
                     if viewModel.prospects.isEmpty && !viewModel.isLoading {
-                        EmptyStateView(title: "Aucun prospect.", message: "Pas encore de chiffres pour cet événement.")
+                        EmptyStateView(title: L("No prospects."), message: L("No figures for this event yet."))
                             .padding(.horizontal, -Space.gutter)
                     } else {
                         overview
@@ -107,7 +107,7 @@ struct DashboardView: View {
                 }
             }
         }
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {
@@ -132,12 +132,12 @@ struct DashboardView: View {
         HStack(spacing: Space.m) {
             Spacer()
             if !viewModel.prospects.isEmpty {
-                IconButton(systemImage: "line.3.horizontal.decrease", label: "Filtres", showsBadge: viewModel.hasActiveFilters) { showFilters = true }
+                IconButton(systemImage: "line.3.horizontal.decrease", label: L("Filters"), showsBadge: viewModel.hasActiveFilters) { showFilters = true }
             }
             if appState.canExport, viewModel.selectedSession != nil, !viewModel.prospects.isEmpty {
                 Menu {
-                    Button { shareRequest = .prospects } label: { Label("Liste des prospects (CSV)", systemImage: "person.text.rectangle") }
-                    Button { shareRequest = .dashboard } label: { Label("Statistiques (CSV)", systemImage: "chart.bar") }
+                    Button { shareRequest = .prospects } label: { Label(L("Prospect list (CSV)"), systemImage: "person.text.rectangle") }
+                    Button { shareRequest = .dashboard } label: { Label(L("Statistics (CSV)"), systemImage: "chart.bar") }
                 } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 16, weight: .semibold))
@@ -147,7 +147,7 @@ struct DashboardView: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Exporter")
+                .accessibilityLabel(L("Export"))
             }
         }
         .frame(minHeight: 42)
@@ -183,7 +183,7 @@ struct DashboardView: View {
     // MARK: - Sections
 
     private var overview: some View {
-        section("01", "Vue d'ensemble") {
+        section("01", L("Overview")) {
             VStack(alignment: .leading, spacing: Space.l) {
                 HStack(alignment: .bottom) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -196,8 +196,8 @@ struct DashboardView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: Space.m) {
-                        bigStat("\(viewModel.rdvCount)", "rendez-vous")
-                        bigStat("\(Int(viewModel.rdvRate.rounded())) %", "taux de RDV")
+                        bigStat("\(viewModel.rdvCount)", L("meetings"))
+                        bigStat(Language.percent(Int(viewModel.rdvRate.rounded())), L("meeting rate"))
                     }
                 }
                 if viewModel.hasRdvTargets {
@@ -208,7 +208,7 @@ struct DashboardView: View {
     }
 
     private var pipeline: some View {
-        section("02", "Avancement") {
+        section("02", L("Progress")) {
             let maxCount = max(1, viewModel.byStatut.map(\.count).max() ?? 1)
             VStack(spacing: Space.l) {
                 ForEach(viewModel.byStatut) { item in
@@ -229,7 +229,7 @@ struct DashboardView: View {
     }
 
     private var programs: some View {
-        section("03", "Programmes") {
+        section("03", L("Programs")) {
             let items = viewModel.byProgram
             let maxCount = max(1, items.map(\.count).max() ?? 1)
             VStack(spacing: Space.l) {
@@ -259,15 +259,16 @@ struct DashboardView: View {
     @ViewBuilder
     private var arrivals: some View {
         if viewModel.arrivals.count > 1 {
-            section("04", "Affluence") {
+            section("04", L("Traffic")) {
                 VStack(alignment: .leading, spacing: Space.m) {
                     if let peak = viewModel.peakHour, peak.count > 0 {
-                        Text("Pic à \(peak.hour) h : \(peak.count) prospect\(peak.count > 1 ? "s" : "").")
+                        let peakCount = L("\(peak.count) prospects")
+                        Text(L("Peak at \(Language.hour(peak.hour)): \(peakCount)."))
                             .font(.textSub)
                             .foregroundStyle(Color.inkSecondary)
                     }
                     Chart(viewModel.arrivals) { item in
-                        BarMark(x: .value("Heure", "\(item.hour) h"), y: .value("Prospects", item.count))
+                        BarMark(x: .value("Hour", Language.hour(item.hour)), y: .value("Prospects", item.count))
                             .foregroundStyle(item.hour == viewModel.peakHour?.hour ? Color.accent : Color.inkPrimary)
                             .cornerRadius(2)
                             .annotation(position: .top, spacing: 3) {
@@ -291,7 +292,7 @@ struct DashboardView: View {
     }
 
     private var attendance: some View {
-        section("05", "Présence") {
+        section("05", L("Attendance")) {
             let registered = viewModel.prospects.count
             let expected = viewModel.preRegistered
             let fraction = min(1, Double(registered) / Double(max(expected, 1)))
@@ -300,11 +301,11 @@ struct DashboardView: View {
                     Text("\(registered)")
                         .font(.numeral(40))
                         .foregroundStyle(Color.inkPrimary)
-                    Text("sur \(expected) pré-inscrits")
+                    Text(L("of \(expected) pre-registered"))
                         .font(.textSub)
                         .foregroundStyle(Color.inkSecondary)
                     Spacer()
-                    Text("\(Int((fraction * 100).rounded())) %")
+                    Text(Language.percent(Int((fraction * 100).rounded())))
                         .font(.figureHeadline)
                         .foregroundStyle(Color.inkPrimary)
                 }
@@ -324,7 +325,7 @@ struct DashboardView: View {
             } label: {
                 HStack(spacing: Space.m) {
                     Image(systemName: "tray.and.arrow.down").foregroundStyle(Color.warning)
-                    Text("Imports incomplets").font(.textBody.weight(.medium)).foregroundStyle(Color.inkPrimary)
+                    Text(L("Incomplete imports")).font(.textBody.weight(.medium)).foregroundStyle(Color.inkPrimary)
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.inkTertiary)
                 }
@@ -342,7 +343,7 @@ struct DashboardView: View {
     private var closing: some View {
         section("06", "Closing") {
             if viewModel.closingByProgram.isEmpty {
-                Text("Aucun conseiller rattaché à un programme.")
+                Text(L("No advisor assigned to a program."))
                     .font(.textSub)
                     .foregroundStyle(Color.inkSecondary)
             } else {
@@ -373,7 +374,7 @@ struct DashboardView: View {
     }
 
     private var members: some View {
-        section("07", "Équipe") {
+        section("07", L("Team")) {
             let items = viewModel.byAgent
             let maxCount = max(1, items.map(\.count).max() ?? 1)
             VStack(spacing: Space.m) {
@@ -418,7 +419,7 @@ struct DashboardView: View {
             withAnimation(.curve(0.2)) { showDetails.toggle() }
         } label: {
             HStack {
-                Text(showDetails ? "Moins de détails" : "Plus de détails")
+                Text(showDetails ? L("Fewer details") : L("More details"))
                     .font(.textSub.weight(.semibold))
                 Spacer()
                 Image(systemName: showDetails ? "chevron.up" : "chevron.down")
@@ -464,7 +465,7 @@ struct DashboardView: View {
     }
 
     private func percent(_ part: Int, of total: Int) -> String {
-        total > 0 ? "\(Int((Double(part) / Double(total) * 100).rounded())) %" : "–"
+        total > 0 ? Language.percent(Int((Double(part) / Double(total) * 100).rounded())) : "–"
     }
 }
 
@@ -518,7 +519,7 @@ struct TargetGauge: View {
             HStack {
                 Text("0 %")
                 Spacer()
-                Text("Objectif \(low)–\(high) %")
+                Text(L("Target \(low)–\(Language.percent(high))"))
                     .foregroundStyle(Color.success)
                 Spacer()
                 Text("100 %")
@@ -527,7 +528,7 @@ struct TargetGauge: View {
             .foregroundStyle(Color.inkTertiary)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Taux de RDV \(Int(rate.rounded())) pour cent, objectif entre \(low) et \(high) pour cent")
+        .accessibilityLabel(L("Meeting rate \(Int(rate.rounded())) percent, target between \(low) and \(high) percent"))
     }
 }
 
@@ -542,17 +543,17 @@ private struct DashboardFilterSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
                 HStack {
-                    Text("Filtres")
+                    Text(L("Filters"))
                         .font(.displayS)
                         .foregroundStyle(Color.inkPrimary)
                     Spacer()
                     if viewModel.hasActiveFilters {
-                        Button("Réinitialiser") { Haptics.tap(); withAnimation(.curve()) { viewModel.clearFilters() } }
+                        Button(L("Reset")) { Haptics.tap(); withAnimation(.curve()) { viewModel.clearFilters() } }
                             .buttonStyle(.link)
                     }
                 }
                 if !programs.isEmpty {
-                    group("Programme") {
+                    group(L("Program")) {
                         ForEach(programs) { p in
                             ChoiceChip(title: p.name, isSelected: viewModel.filterPrograms.contains(p.id), tint: p.swiftUIColor) {
                                 viewModel.filterPrograms.toggle(member: p.id, isOn: !viewModel.filterPrograms.contains(p.id))
@@ -560,14 +561,14 @@ private struct DashboardFilterSheet: View {
                         }
                     }
                 }
-                group("Statut") {
+                group(L("Status")) {
                     ForEach(Statut.allCases) { s in
                         ChoiceChip(title: s.rawValue, isSelected: viewModel.filterStatuts.contains(s), tint: s.color) {
                             viewModel.filterStatuts.toggle(member: s, isOn: !viewModel.filterStatuts.contains(s))
                         }
                     }
                 }
-                group("Niveau actuel") {
+                group(L("Current level")) {
                     ForEach(NiveauActuel.allCases) { n in
                         ChoiceChip(title: n.rawValue, isSelected: viewModel.filterNiveaux.contains(n)) {
                             viewModel.filterNiveaux.toggle(member: n, isOn: !viewModel.filterNiveaux.contains(n))
@@ -575,7 +576,7 @@ private struct DashboardFilterSheet: View {
                     }
                 }
                 if viewModel.agentNames.count > 1 {
-                    group("Enregistré par") {
+                    group(L("Recorded by")) {
                         ForEach(viewModel.agentNames, id: \.self) { name in
                             ChoiceChip(title: name, isSelected: viewModel.filterAgents.contains(name)) {
                                 viewModel.filterAgents.toggle(member: name, isOn: !viewModel.filterAgents.contains(name))
@@ -592,7 +593,7 @@ private struct DashboardFilterSheet: View {
             Button {
                 dismiss()
             } label: {
-                Text("Voir \(viewModel.totalProspects) prospect\(viewModel.totalProspects > 1 ? "s" : "")")
+                Text(L("View \(viewModel.totalProspects) prospects"))
                     .contentTransition(.numericText())
             }
             .buttonStyle(.primary)

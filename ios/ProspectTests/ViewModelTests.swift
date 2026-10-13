@@ -181,7 +181,7 @@ final class AppStateTests: XCTestCase {
 
     func testProgramNames() {
         let state = AppState.preview(.organizerFull)
-        XCTAssertEqual(state.programName(nil), "Sans programme")
+        XCTAssertEqual(state.programName(nil), "No program")
         XCTAssertEqual(state.programName(state.programs[0].id), state.programs[0].name)
     }
 

@@ -12,7 +12,7 @@ struct JoinSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             HStack {
-                Text("Rejoindre").font(.displayS).foregroundStyle(Color.inkPrimary)
+                Text(L("Join")).font(.displayS).foregroundStyle(Color.inkPrimary)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
@@ -23,12 +23,12 @@ struct JoinSheet: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Fermer")
+                .accessibilityLabel(L("Close"))
             }
             QRScannerView { code in handle(code) }
                 .frame(height: 300)
                 .clipShape(RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-            LabeledField(title: "Lien", isFocused: focused, hasError: errorText != nil) {
+            LabeledField(title: L("Link"), isFocused: focused, hasError: errorText != nil) {
                 TextField("prospect://join?…", text: $pasted)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -45,12 +45,12 @@ struct JoinSheet: View {
 
     private func handle(_ text: String) {
         guard let invitation = Invitation(text: text) else {
-            errorText = "Ce code n'est pas une invitation Prospect."
+            errorText = L("This code isn't a Prospect invitation.")
             return
         }
         do {
             try appState.join(invitation)
-            appState.importMessage = "Rejoint : \(invitation.name)"
+            appState.importMessage = L("Joined: \(invitation.name)")
             dismiss()
             appState.epoch += 1
         } catch {

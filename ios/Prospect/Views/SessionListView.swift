@@ -18,11 +18,11 @@ struct SessionListView: View {
                 ProgressView().tint(Color.inkTertiary)
             } else if vm.summaries.isEmpty {
                 EmptyStateView(
-                    title: "Aucun \(appState.eventLabel.lowercased()).",
+                    title: L("No \(appState.eventLabel.lowercased())."),
                     message: appState.isAdmin
-                        ? "Créez le premier, puis invitez votre équipe."
-                        : "Scannez l'invitation de l'organisateur depuis votre profil.",
-                    actionTitle: appState.isAdmin ? "Créer : \(appState.eventLabel)" : nil,
+                        ? L("Create the first one, then invite your team.")
+                        : L("Scan the organizer's invitation from your profile."),
+                    actionTitle: appState.isAdmin ? L("Create: \(appState.eventLabel)") : nil,
                     action: appState.isAdmin ? { vm.showNewSessionSheet = true } : nil
                 )
             } else if let selected = vm.selectedSummary {
@@ -91,13 +91,13 @@ struct SessionListView: View {
                 .presentationBackground(Color.surfaceBackground)
         }
         .alert(
-            "Supprimer « \(vm.sessionToDelete?.name ?? "") » ?",
+            L("Delete “\(vm.sessionToDelete?.name ?? "")”?"),
             isPresented: Binding(get: { vm.sessionToDelete != nil }, set: { if !$0 { vm.sessionToDelete = nil } })
         ) {
-            Button("Supprimer", role: .destructive) { Task { await vm.confirmDelete() } }
-            Button("Annuler", role: .cancel) { vm.sessionToDelete = nil }
+            Button(L("Delete"), role: .destructive) { Task { await vm.confirmDelete() } }
+            Button(L("Cancel"), role: .cancel) { vm.sessionToDelete = nil }
         }
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
         )) {

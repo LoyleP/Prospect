@@ -17,8 +17,8 @@ enum EndReminder {
         center.requestAuthorization(options: [.alert, .sound]) { granted, _ in
             guard granted else { return }
             let content = UNMutableNotificationContent()
-            content.title = "\(name) est terminé"
-            content.body = "Envoyez vos prospects à \(organizer) depuis l'onglet Envoi."
+            content.title = L("\(name) has ended")
+            content.body = L("Send your prospects to \(organizer) from the Send tab.")
             content.sound = .default
             let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: date)
             let trigger = UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)

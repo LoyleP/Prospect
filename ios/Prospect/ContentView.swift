@@ -37,8 +37,8 @@ struct MainTabView: View {
         // Agents never see statistics: only the organizer, who has the whole event once imports are done.
         if appState.isAdmin { items.append(.init(tab: .dashboard, title: "Stats", icon: "chart.bar.xaxis")) }
         items.append(.init(tab: .archive, title: "Archive", icon: "archivebox"))
-        let exchange: (String, String) = appState.isAdmin ? ("Collecte", "tray.and.arrow.down")
-            : (appState.isConseiller ? ("Réception", "arrow.down.circle") : ("Envoi", "paperplane"))
+        let exchange: (String, String) = appState.isAdmin ? (L("Collect"), "tray.and.arrow.down")
+            : (appState.isConseiller ? (L("Inbox"), "arrow.down.circle") : (L("Send"), "paperplane"))
         items.append(.init(tab: .exchange, title: exchange.0, icon: exchange.1))
         return items
     }
@@ -112,7 +112,7 @@ struct AddProspectButton: View {
         }
         .buttonStyle(PressableStyle(scale: 0.94))
         .shadow(color: .black.opacity(0.45), radius: 18, y: 6)
-        .accessibilityLabel("Nouveau prospect")
+        .accessibilityLabel(L("New prospect"))
         .accessibilityIdentifier("addProspect")
     }
 }

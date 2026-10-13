@@ -21,7 +21,7 @@ struct QRCodeView: View {
         .padding(12)
         .frame(width: size, height: size)
         .background(.white, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
-        .accessibilityLabel("Code QR de l'invitation")
+        .accessibilityLabel(L("Invitation QR code"))
     }
 
     static func image(for text: String) -> UIImage? {

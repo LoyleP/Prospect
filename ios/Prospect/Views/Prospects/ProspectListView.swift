@@ -94,10 +94,10 @@ struct ProspectListView: View {
                                             Haptics.soft()
                                             Task {
                                                 await viewModel.archiveProspect(prospect)
-                                                toast = Toast(message: "Prospect archivé", style: .info)
+                                                toast = Toast(message: L("Prospect archived"), style: .info)
                                             }
                                         } label: {
-                                            Label("Archiver", systemImage: "archivebox.fill")
+                                            Label(L("Archive"), systemImage: "archivebox.fill")
                                         }
                                         .tint(Color.surfaceCard2)
                                     }
@@ -131,7 +131,7 @@ struct ProspectListView: View {
         .sheet(isPresented: $showAddForm) {
             ProspectFormView(mode: .create(session: summary.asSession), programs: appState.programs, authorName: appState.agentNom) { saved in
                 viewModel.upsertLocally(saved)
-                toast = Toast(message: "Prospect ajouté", style: .success)
+                toast = Toast(message: L("Prospect added"), style: .success)
                 reveal(saved.id, proxy)
             }
             .presentationDetents([.fraction(0.64), .large])
@@ -141,7 +141,7 @@ struct ProspectListView: View {
         .sheet(item: $prospectToEdit) { prospect in
             ProspectFormView(mode: .edit(prospect), programs: appState.programs, isReadOnly: isReadOnly) { saved in
                 viewModel.upsertLocally(saved)
-                toast = Toast(message: "Modifications enregistrées", style: .success)
+                toast = Toast(message: L("Changes saved"), style: .success)
             }
             .presentationDetents([.fraction(0.64), .large])
             .presentationContentInteraction(.scrolls)
@@ -154,7 +154,7 @@ struct ProspectListView: View {
         }
         // Cancelled automatically when the list leaves the screen, which stops polling.
         .task { await viewModel.loadAndPoll() }
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {
@@ -196,30 +196,30 @@ struct ProspectListView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(PressableStyle())
-            .accessibilityLabel("Profil")
+            .accessibilityLabel(L("Profile"))
             .accessibilityIdentifier("profileButton")
             Spacer()
             if appState.isAdmin {
-                IconButton(systemImage: "qrcode", label: "Inviter") { appState.route = .invitation }
+                IconButton(systemImage: "qrcode", label: L("Invite")) { appState.route = .invitation }
                     .accessibilityIdentifier("inviteButton")
             }
             if let actions = eventActions {
                 // The event's settings, right beside the filters.
                 Menu {
-                    Button { actions.edit() } label: { Label("Modifier", systemImage: "pencil") }
-                    Button { actions.objectives() } label: { Label("Objectifs", systemImage: "target") }
+                    Button { actions.edit() } label: { Label(L("Edit"), systemImage: "pencil") }
+                    Button { actions.objectives() } label: { Label(L("Targets"), systemImage: "target") }
                     Button { actions.toggleArchive() } label: {
-                        Label(summary.isArchived ? "Désarchiver" : "Archiver", systemImage: summary.isArchived ? "tray.and.arrow.up" : "archivebox")
+                        Label(summary.isArchived ? L("Unarchive") : L("Archive"), systemImage: summary.isArchived ? "tray.and.arrow.up" : "archivebox")
                     }
                     Divider()
-                    Button(role: .destructive) { actions.delete() } label: { Label("Supprimer", systemImage: "trash") }
+                    Button(role: .destructive) { actions.delete() } label: { Label(L("Delete"), systemImage: "trash") }
                 } label: {
                     IconCircle(systemImage: "slider.horizontal.3")
                 }
-                .accessibilityLabel("Réglages")
+                .accessibilityLabel(L("Settings"))
                 .accessibilityIdentifier("eventSettingsButton")
             }
-            IconButton(systemImage: "line.3.horizontal.decrease", label: "Filtres", showsBadge: viewModel.hasActiveFilters) {
+            IconButton(systemImage: "line.3.horizontal.decrease", label: L("Filters"), showsBadge: viewModel.hasActiveFilters) {
                 showFilters = true
             }
             .accessibilityIdentifier("filterButton")
@@ -256,7 +256,7 @@ struct ProspectListView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle(scale: 0.995))
-        .accessibilityLabel("\(summary.name), \(summaryLine). Changer de \(appState.eventLabel.lowercased())")
+        .accessibilityLabel(L("\(summary.name), \(summaryLine). Change \(appState.eventLabel.lowercased())"))
         .accessibilityIdentifier("eventPicker")
     }
 
@@ -264,17 +264,19 @@ struct ProspectListView: View {
     @ViewBuilder
     private var eventStatus: some View {
         if summary.statutSession == .enCours {
-            Stamp(text: "En direct", color: .accent, showsLiveDot: true)
+            Stamp(text: L("Live"), color: .accent, showsLiveDot: true)
         } else if isReadOnly {
-            StatusLabel(text: summary.statutSession == .termine ? "Terminé" : "Lecture seule", color: .inkTertiary, showsDot: false)
+            StatusLabel(text: summary.statutSession == .termine ? L("Finished") : L("Read-only"), color: .inkTertiary, showsDot: false)
         }
     }
 
     private var summaryLine: String {
-        guard total > 0 else { return "Aucun prospect" }
+        guard total > 0 else { return L("No prospects") }
         // Agents see a count only: figures and rates belong to the organizer.
-        guard appState.isAdmin else { return "\(total) prospect\(total > 1 ? "s" : "")" }
-        return "\(total) prospect\(total > 1 ? "s" : "") · \(rdvCount) RDV · \(rate) %"
+        let count = L("\(total) prospects")
+        guard appState.isAdmin else { return count }
+        let meetings = L("\(rdvCount) meetings")
+        return "\(count) · \(meetings) · \(Language.percent(rate))"
     }
 
     /// A quiet raised field. No outline.
@@ -284,7 +286,7 @@ struct ProspectListView: View {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Color.inkTertiary)
-            TextField("Rechercher", text: $vm.searchText)
+            TextField(L("Search"), text: $vm.searchText)
                 .font(.textBody)
                 .foregroundStyle(Color.inkPrimary)
                 .focused($searchFocused)
@@ -296,7 +298,7 @@ struct ProspectListView: View {
                     Image(systemName: "xmark.circle.fill").foregroundStyle(Color.inkTertiary)
                         .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
-                .accessibilityLabel("Effacer la recherche")
+                .accessibilityLabel(L("Clear search"))
             }
         }
         .padding(.horizontal, Space.l)
@@ -310,18 +312,18 @@ struct ProspectListView: View {
     private var emptyState: some View {
         if viewModel.hasActiveFilters || !viewModel.searchText.isEmpty {
             EmptyStateView(
-                title: "Aucun résultat.",
-                message: "Rien ne correspond à ces filtres.",
-                actionTitle: "Tout afficher",
+                title: L("No results."),
+                message: L("Nothing matches these filters."),
+                actionTitle: L("Show all"),
                 action: { viewModel.clearFilters(); viewModel.searchText = "" }
             )
         } else if isReadOnly {
-            EmptyStateView(title: "Aucun prospect.", message: "")
+            EmptyStateView(title: L("No prospects."), message: "")
         } else {
             EmptyStateView(
-                title: "Aucun prospect.",
-                message: "Les prospects enregistrés apparaissent ici.",
-                actionTitle: "Ajouter un prospect",
+                title: L("No prospects."),
+                message: L("Recorded prospects appear here."),
+                actionTitle: L("Add a prospect"),
                 action: { showAddForm = true }
             )
         }

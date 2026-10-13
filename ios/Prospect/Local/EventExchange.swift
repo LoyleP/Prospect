@@ -9,15 +9,15 @@ enum ExchangeError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .noIdentity:      return "Choisissez d'abord votre nom."
-        case .notOrganizer:    return "Seul l'organisateur de cet événement peut faire cela."
-        case .unknownEvent:    return "Cet événement n'existe pas sur ce téléphone."
-        case .notAnInvitation: return "Ce code n'est pas une invitation Prospect."
-        case .notAHandover:    return "Ce fichier n'est pas un envoi Prospect."
-        case .notAnEventData:  return "Ces données ne sont pas valides."
-        case .wrongEvent:      return "Ce fichier appartient à un autre événement."
-        case .cannotDecrypt:   return "Impossible de lire ce fichier : il n'est pas destiné à cet appareil."
-        case .keyMissing:      return "La clé de cet événement est introuvable sur ce téléphone."
+        case .noIdentity:      return L("Choose your name first.")
+        case .notOrganizer:    return L("Only this event's organizer can do that.")
+        case .unknownEvent:    return L("This event doesn't exist on this phone.")
+        case .notAnInvitation: return L("This code isn't a Prospect invitation.")
+        case .notAHandover:    return L("This file isn't a Prospect handover.")
+        case .notAnEventData:  return L("This data isn't valid.")
+        case .wrongEvent:      return L("This file belongs to another event.")
+        case .cannotDecrypt:   return L("Can't read this file: it isn't meant for this device.")
+        case .keyMissing:      return L("This event's key can't be found on this phone.")
         }
     }
 }

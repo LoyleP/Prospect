@@ -24,13 +24,13 @@ enum DemoSeed {
         case .fresh:
             break
         case .organizerEmpty:
-            state.identity = StoredIdentity(displayName: "Camille Martin", role: .admin, eventLabel: "Salon")
+            state.identity = StoredIdentity(displayName: "Camille Martin", role: .admin, eventLabel: L("Fair"))
         case .organizerFull:
-            state.identity = StoredIdentity(displayName: "Camille Martin", role: .admin, eventLabel: "Salon")
+            state.identity = StoredIdentity(displayName: "Camille Martin", role: .admin, eventLabel: L("Fair"))
             state.programs = programs()
             state.events = organizerEvents(state: state, keys: keys, now: now)
         case .agentFull:
-            state.identity = StoredIdentity(displayName: "Hugo Petit", role: .agent, eventLabel: "Salon")
+            state.identity = StoredIdentity(displayName: "Hugo Petit", role: .agent, eventLabel: L("Fair"))
             state.programs = programs()
             state.events = [agentEvent(state: state, now: now)]
         }
@@ -41,7 +41,7 @@ enum DemoSeed {
     // MARK: Data
 
     static func programs() -> [Program] {
-        [("Informatique", "#2EC7BF"), ("Design & Création", "#3366E6"), ("Commerce", "#F2D11A"), ("Audiovisuel", "#E85D9F"), ("Architecture", "#22D3EE")]
+        [(L("Computer Science"), "#2EC7BF"), (L("Design & Creative"), "#3366E6"), (L("Business"), "#F2D11A"), (L("Audiovisual"), "#E85D9F"), ("Architecture", "#22D3EE")]
             .enumerated().map { Program(id: UUID(), name: $1.0, color: $1.1, sortOrder: $0) }
     }
 
@@ -71,7 +71,7 @@ enum DemoSeed {
                 id: UUID(), sessionId: event, prenom: p.0, nom: p.1, email: "\(p.0.lowercased())@exemple.fr",
                 telephone: "06 12 34 56 \(String(format: "%02d", 10 + i))", programId: programs[p.3].id,
                 niveauActuel: levels[i % levels.count], statut: p.2.rawValue,
-                notes: i % 4 == 0 ? "Intéressé(e) par une alternance." : nil,
+                notes: i % 4 == 0 ? L("Interested in a work-study program.") : nil,
                 createdBy: authors[p.5], agentNom: p.5, createdAt: stamp, updatedAt: stamp, deletedAt: nil
             )
         }
@@ -95,9 +95,9 @@ enum DemoSeed {
             HandoverReceipt(id: authors["Hugo Petit"]!, agentName: "Hugo Petit", count: 6, added: 6, receivedAt: now.addingTimeInterval(-1_800)),
         ]
         return [
-            event(liveEventId, "Salon de l'étudiant", 0, .enCours, live, receipts),
-            event(UUID(), "Forum d'orientation", 21, .pasCommence, [], []),
-            event(UUID(), "Portes ouvertes de mars", -42, .termine, [], []),
+            event(liveEventId, L("Student fair"), 0, .enCours, live, receipts),
+            event(UUID(), L("Career forum"), 21, .pasCommence, [], []),
+            event(UUID(), L("March open day"), -42, .termine, [], []),
         ]
     }
 
@@ -105,7 +105,7 @@ enum DemoSeed {
         let key = Curve25519.KeyAgreement.PrivateKey()
         let list = prospects(event: liveEventId, programs: state.programs, authors: ["Hugo Petit": state.deviceId], only: "Hugo Petit", now: now)
         return StoredEvent(
-            id: liveEventId, name: "Salon de l'étudiant", date: day(0, from: now), endsAt: now.addingTimeInterval(4 * 3600),
+            id: liveEventId, name: L("Student fair"), date: day(0, from: now), endsAt: now.addingTimeInterval(4 * 3600),
             status: .enCours, isArchived: false, preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:],
             createdAt: ProspectService.iso(now.addingTimeInterval(-3_600)), organizerName: "Camille Martin",
             organizerPublicKey: key.publicKey.rawRepresentation.base64EncodedString(), isOrganizer: false,

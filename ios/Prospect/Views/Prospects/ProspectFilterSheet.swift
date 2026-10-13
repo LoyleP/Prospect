@@ -11,12 +11,12 @@ struct ProspectFilterSheet: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
                 HStack {
-                    Text("Filtres")
+                    Text(L("Filters"))
                         .font(.displayS)
                         .foregroundStyle(Color.inkPrimary)
                     Spacer()
                     if viewModel.hasActiveFilters {
-                        Button("Réinitialiser") { Haptics.tap(); withAnimation(.curve()) { viewModel.clearFilters() } }
+                        Button(L("Reset")) { Haptics.tap(); withAnimation(.curve()) { viewModel.clearFilters() } }
                             .font(.textSub.weight(.medium))
                             .foregroundStyle(Color.inkTertiary)
                             .frame(minHeight: 44)
@@ -25,7 +25,7 @@ struct ProspectFilterSheet: View {
 
                 // One grouped block of rows; each opens a native multi-choice menu.
                 VStack(spacing: 0) {
-                    filterRow("Statut", value: summary(viewModel.filterStatuts.map(\.shortLabel))) {
+                    filterRow(L("Status"), value: summary(viewModel.filterStatuts.map(\.shortLabel))) {
                         ForEach(Statut.allCases) { st in
                             check(st.shortLabel, isOn: viewModel.filterStatuts.contains(st)) {
                                 viewModel.filterStatuts.toggle(member: st, isOn: !viewModel.filterStatuts.contains(st))
@@ -34,7 +34,7 @@ struct ProspectFilterSheet: View {
                     }
                     if !programs.isEmpty {
                         Rule().padding(.leading, Space.l)
-                        filterRow("Programme", value: summary(programs.filter { viewModel.filterPrograms.contains($0.id) }.map(\.name))) {
+                        filterRow(L("Program"), value: summary(programs.filter { viewModel.filterPrograms.contains($0.id) }.map(\.name))) {
                             ForEach(programs) { p in
                                 check(p.name, isOn: viewModel.filterPrograms.contains(p.id)) {
                                     viewModel.filterPrograms.toggle(member: p.id, isOn: !viewModel.filterPrograms.contains(p.id))
@@ -43,7 +43,7 @@ struct ProspectFilterSheet: View {
                         }
                     }
                     Rule().padding(.leading, Space.l)
-                    filterRow("Niveau", value: summary(viewModel.filterNiveaux.map(\.rawValue))) {
+                    filterRow(L("Level"), value: summary(viewModel.filterNiveaux.map(\.rawValue))) {
                         ForEach(NiveauActuel.allCases) { n in
                             check(n.rawValue, isOn: viewModel.filterNiveaux.contains(n)) {
                                 viewModel.filterNiveaux.toggle(member: n, isOn: !viewModel.filterNiveaux.contains(n))
@@ -52,7 +52,7 @@ struct ProspectFilterSheet: View {
                     }
                     if viewModel.agentNames.count > 1 {
                         Rule().padding(.leading, Space.l)
-                        filterRow("Enregistré par", value: summary(Array(viewModel.filterAgents))) {
+                        filterRow(L("Recorded by"), value: summary(Array(viewModel.filterAgents))) {
                             ForEach(viewModel.agentNames, id: \.self) { name in
                                 check(name, isOn: viewModel.filterAgents.contains(name)) {
                                     viewModel.filterAgents.toggle(member: name, isOn: !viewModel.filterAgents.contains(name))
@@ -72,7 +72,7 @@ struct ProspectFilterSheet: View {
                 dismiss()
             } label: {
                 let n = viewModel.filteredProspects.count
-                Text(n == 0 ? "Aucun résultat" : "Afficher \(n) prospect\(n > 1 ? "s" : "")")
+                Text(n == 0 ? L("No results") : L("Show \(n) prospects"))
                     .contentTransition(.numericText())
             }
             .buttonStyle(.primary)
@@ -87,9 +87,9 @@ struct ProspectFilterSheet: View {
 
     private func summary(_ names: [String]) -> String {
         switch names.count {
-        case 0: return "Tous"
+        case 0: return L("All")
         case 1: return names[0]
-        default: return "\(names.count) sélectionnés"
+        default: return L("\(names.count) selected")
         }
     }
 
@@ -113,7 +113,7 @@ struct ProspectFilterSheet: View {
                 Spacer(minLength: Space.m)
                 Text(value)
                     .font(.textBody)
-                    .foregroundStyle(value == "Tous" ? Color.inkTertiary : Color.accent)
+                    .foregroundStyle(value == L("All") ? Color.inkTertiary : Color.accent)
                     .lineLimit(1)
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.system(size: 11, weight: .semibold))

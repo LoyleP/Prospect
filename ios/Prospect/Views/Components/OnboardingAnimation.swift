@@ -9,12 +9,21 @@ struct OnboardingAnimation: View {
     @State private var start = Date()
     @State private var running = true
 
+    /// Debug builds: `-debugAnimationFrame 315` freezes the loop on one frame, for repeatable screenshots.
+    private static let frozenFrame: Double? = {
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let i = args.firstIndex(of: "-debugAnimationFrame"), args.indices.contains(i + 1) { return Double(args[i + 1]) }
+        #endif
+        return nil
+    }()
+
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !running || reduceMotion)) { timeline in
+        TimelineView(.animation(minimumInterval: 1.0 / 60, paused: !running || reduceMotion || Self.frozenFrame != nil)) { timeline in
             Canvas { ctx, size in
                 // Reduce Motion: frame 0 is the organizer's QR alone, a still image.
-                let frame = reduceMotion ? 0 : (timeline.date.timeIntervalSince(start) * 60)
-                    .truncatingRemainder(dividingBy: OnboardingScene.length)
+                let frame = Self.frozenFrame ?? (reduceMotion ? 0 : (timeline.date.timeIntervalSince(start) * 60)
+                    .truncatingRemainder(dividingBy: OnboardingScene.length))
                 OnboardingScene.draw(&ctx, in: size, frame: frame)
             }
         }

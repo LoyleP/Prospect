@@ -15,25 +15,25 @@ struct ObjectivesView: View {
         @Bindable var vm = viewModel
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                ScreenHeading(label: vm.session.name, title: "Objectifs.")
+                ScreenHeading(label: vm.session.name, title: L("Targets."))
 
-                NumberedSection(number: "01", title: "Présence attendue") {
-                    row("Pré-inscrits", nil) {
+                NumberedSection(number: "01", title: L("Expected attendance")) {
+                    row(L("Pre-registered"), nil) {
                         QuantityControl(value: $vm.preRegistered, range: 0...5000, step: 5)
                     }
                 }
 
-                NumberedSection(number: "02", title: "Cible du taux de RDV") {
+                NumberedSection(number: "02", title: L("Meeting rate target")) {
                     VStack(alignment: .leading, spacing: Space.l) {
-                        row("Objectif bas", nil) { QuantityControl(value: $vm.rdvTargetLow, range: 0...100, step: 5, suffix: " %") }
-                        row("Objectif haut", nil) { QuantityControl(value: $vm.rdvTargetHigh, range: 0...100, step: 5, suffix: " %") }
+                        row(L("Low target"), nil) { QuantityControl(value: $vm.rdvTargetLow, range: 0...100, step: 5, suffix: " %") }
+                        row(L("High target"), nil) { QuantityControl(value: $vm.rdvTargetHigh, range: 0...100, step: 5, suffix: " %") }
                     }
                 }
 
-                NumberedSection(number: "03", title: "Par programme") {
+                NumberedSection(number: "03", title: L("By program")) {
                     VStack(spacing: 0) {
                         if appState.programs.isEmpty {
-                            Text("Aucun programme.")
+                            Text(L("No programs."))
                                 .font(.textSub).foregroundStyle(Color.inkSecondary)
                         }
                         ForEach(appState.programs) { program in
@@ -61,11 +61,11 @@ struct ObjectivesView: View {
             Button {
                 Task {
                     await viewModel.save()
-                    if viewModel.saveSuccess { toast = Toast(message: "Objectifs enregistrés", style: .success); viewModel.saveSuccess = false }
+                    if viewModel.saveSuccess { toast = Toast(message: L("Targets saved"), style: .success); viewModel.saveSuccess = false }
                 }
             } label: {
                 ZStack {
-                    Text("Enregistrer").opacity(vm.isSaving ? 0 : 1)
+                    Text(L("Save")).opacity(vm.isSaving ? 0 : 1)
                     if vm.isSaving { ProgressView().tint(Color.onInk) }
                 }
             }
@@ -79,7 +79,7 @@ struct ObjectivesView: View {
         .toast($toast)
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
         )) {

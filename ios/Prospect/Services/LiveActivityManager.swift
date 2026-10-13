@@ -28,7 +28,8 @@ final class LiveActivityManager {
 
         let attributes = SessionActivityAttributes(
             sessionName: session.name,
-            sessionDate: session.formattedDate
+            sessionDate: session.formattedDate,
+            language: Language.current.rawValue
         )
         let content = ActivityContent(state: makeState(from: prospects), staleDate: nil)
 
@@ -60,8 +61,9 @@ final class LiveActivityManager {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         Task { await endAll() }
         let attributes = SessionActivityAttributes(
-            sessionName: "Événement test",
-            sessionDate: Date().formatted(.dateTime.day().month(.wide).year().locale(Locale(identifier: "fr_FR")))
+            sessionName: L("Test event"),
+            sessionDate: Date().formatted(.dateTime.day().month(.wide).year().locale(Language.current.locale)),
+            language: Language.current.rawValue
         )
         let state = SessionActivityAttributes.ContentState(
             totalProspects: 28,

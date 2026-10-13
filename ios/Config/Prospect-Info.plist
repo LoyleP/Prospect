@@ -10,7 +10,7 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Envoi Prospect</string>
+			<string>Prospect handover</string>
 			<key>LSHandlerRank</key>
 			<string>Owner</string>
 			<key>LSItemContentTypes</key>
@@ -25,6 +25,11 @@
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>fr</string>
+	</array>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
 	<key>CFBundlePackageType</key>
@@ -54,9 +59,9 @@
 		<string>_prospect-sync._udp</string>
 	</array>
 	<key>NSCameraUsageDescription</key>
-	<string>La caméra sert à scanner l'invitation de l'organisateur.</string>
+	<string>The camera is used to scan the organizer's invitation.</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>Prospect échange les prospects directement entre les téléphones proches, sans serveur.</string>
+	<string>Prospect exchanges prospects directly between nearby phones, without a server.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
@@ -81,7 +86,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Envoi Prospect</string>
+			<string>Prospect handover</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.flow.prospect.handover</string>
 			<key>UTTypeTagSpecification</key>

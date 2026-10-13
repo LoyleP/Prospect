@@ -46,8 +46,8 @@ final class ProspectFormViewModel {
 
     var navigationTitle: String {
         switch mode {
-        case .create: return "Nouveau prospect"
-        case .edit:   return "Modifier"
+        case .create: return L("New prospect")
+        case .edit:   return L("Edit")
         }
     }
 
@@ -115,7 +115,7 @@ final class ProspectFormViewModel {
                 return try await service.updateProspect(id: existing.id, input)
             }
         } catch {
-            errorMessage = "Impossible d'enregistrer le prospect : \(error.localizedDescription)"
+            errorMessage = L("Couldn't save the prospect: \(error.localizedDescription)")
             return nil
         }
     }

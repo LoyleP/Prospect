@@ -6,17 +6,17 @@ import Foundation
 enum CSVExporter {
     static func columnHeaders(eventLabel: String) -> [String] {
         [
-            "Prénom",
-            "Nom",
+            L("First name"),
+            L("Last name"),
             "Email",
-            "Téléphone",
-            "Programme",
-            "Niveau actuel",
-            "Statut",
+            L("Phone"),
+            L("Program"),
+            L("Current level"),
+            L("Status"),
             "Notes",
-            "Enregistré par",
+            L("Recorded by"),
             eventLabel,
-            "Date d'enregistrement",
+            L("Date recorded"),
         ]
     }
 
@@ -33,8 +33,8 @@ enum CSVExporter {
         let isoFallback = ISO8601DateFormatter()
 
         let displayFormatter = DateFormatter()
-        displayFormatter.locale = Locale(identifier: "fr_FR")
-        displayFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+        displayFormatter.locale = Language.current.locale
+        displayFormatter.dateFormat = Language.current == .fr ? "dd/MM/yyyy HH:mm" : "yyyy-MM-dd HH:mm"
 
         for p in prospects {
             let date = isoParser.date(from: p.createdAt) ?? isoFallback.date(from: p.createdAt)

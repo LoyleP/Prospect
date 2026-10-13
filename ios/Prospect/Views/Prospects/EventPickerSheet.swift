@@ -22,16 +22,16 @@ struct EventPickerSheet: View {
     private var groups: [(title: String, items: [SessionSummary])] {
         let active = summaries.filter { !$0.isArchived }
         return [
-            ("En direct", active.filter { $0.statutSession == .enCours }),
-            ("À venir", active.filter { $0.statutSession == .pasCommence }),
-            ("Terminés", active.filter { $0.statutSession == .termine }),
-            ("Archivés", summaries.filter { $0.isArchived }),
+            (L("Live"), active.filter { $0.statutSession == .enCours }),
+            (L("Upcoming"), active.filter { $0.statutSession == .pasCommence }),
+            (L("Finished"), active.filter { $0.statutSession == .termine }),
+            (L("Archived"), summaries.filter { $0.isArchived }),
         ].filter { !$0.1.isEmpty }
     }
 
-    private static let shortDate: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "fr_FR"); f.dateFormat = "d MMM"; return f
-    }()
+    private static let shortDate = PerLanguage<DateFormatter> { language in
+        let f = DateFormatter(); f.locale = language.locale; f.dateFormat = language == .fr ? "d MMM" : "MMM d"; return f
+    }
 
     var body: some View {
         ScrollView {
@@ -48,7 +48,7 @@ struct EventPickerSheet: View {
                                 .foregroundStyle(Color.onAccent)
                                 .frame(width: 30, height: 30)
                                 .background(Color.accent, in: Circle())
-                            Text("Créer : \(eventLabel)")
+                            Text(L("Create: \(eventLabel)"))
                                 .font(.textBody.weight(.medium))
                                 .foregroundStyle(Color.inkPrimary)
                             Spacer()
@@ -82,8 +82,8 @@ struct EventPickerSheet: View {
 
     private func row(_ summary: SessionSummary) -> some View {
         let selected = summary.id == selectedId
-        let date = summary.session.displayDate.map { Self.shortDate.string(from: $0).replacingOccurrences(of: ".", with: "") }
-        let count = "\(summary.prospectCount) prospect\(summary.prospectCount > 1 ? "s" : "")"
+        let date = summary.session.displayDate.map { Self.shortDate.value.string(from: $0).replacingOccurrences(of: ".", with: "") }
+        let count = L("\(summary.prospectCount) prospects")
         return HStack(spacing: Space.s) {
             Button {
                 Haptics.selection()
@@ -116,14 +116,14 @@ struct EventPickerSheet: View {
 
             if isAdmin {
                 Menu {
-                    Button { dismiss(); onAccess(summary) } label: { Label("Inviter", systemImage: "qrcode") }
-                    Button { dismiss(); onObjectives(summary) } label: { Label("Objectifs", systemImage: "target") }
-                    Button { dismiss(); onEdit(summary) } label: { Label("Modifier", systemImage: "pencil") }
+                    Button { dismiss(); onAccess(summary) } label: { Label(L("Invite"), systemImage: "qrcode") }
+                    Button { dismiss(); onObjectives(summary) } label: { Label(L("Targets"), systemImage: "target") }
+                    Button { dismiss(); onEdit(summary) } label: { Label(L("Edit"), systemImage: "pencil") }
                     Button { onToggleArchive(summary) } label: {
-                        Label(summary.isArchived ? "Désarchiver" : "Archiver", systemImage: summary.isArchived ? "tray.and.arrow.up" : "archivebox")
+                        Label(summary.isArchived ? L("Unarchive") : L("Archive"), systemImage: summary.isArchived ? "tray.and.arrow.up" : "archivebox")
                     }
                     Divider()
-                    Button(role: .destructive) { dismiss(); onDelete(summary) } label: { Label("Supprimer", systemImage: "trash") }
+                    Button(role: .destructive) { dismiss(); onDelete(summary) } label: { Label(L("Delete"), systemImage: "trash") }
                 } label: {
                     Image(systemName: "ellipsis")
                         .font(.system(size: 16, weight: .semibold))
@@ -131,7 +131,7 @@ struct EventPickerSheet: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Actions pour \(summary.name)")
+                .accessibilityLabel(L("Actions for \(summary.name)"))
             }
         }
         .opacity(summary.isArchived ? 0.5 : 1)
@@ -143,21 +143,21 @@ struct DateStub: View {
     let session: Session
     var live = false
 
-    private static let month: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "fr_FR"); f.dateFormat = "MMM"; return f
-    }()
-    private static let day: DateFormatter = {
-        let f = DateFormatter(); f.locale = Locale(identifier: "fr_FR"); f.dateFormat = "d"; return f
-    }()
+    private static let month = PerLanguage<DateFormatter> { language in
+        let f = DateFormatter(); f.locale = language.locale; f.dateFormat = "MMM"; return f
+    }
+    private static let day = PerLanguage<DateFormatter> { language in
+        let f = DateFormatter(); f.locale = language.locale; f.dateFormat = "d"; return f
+    }
 
     var body: some View {
         let date = session.displayDate
         VStack(spacing: 0) {
-            Text(date.map { Self.month.string(from: $0).replacingOccurrences(of: ".", with: "").uppercased() } ?? "—")
+            Text(date.map { Self.month.value.string(from: $0).replacingOccurrences(of: ".", with: "").uppercased() } ?? "—")
                 .font(.figure(11, weight: .bold))
                 .tracking(1.0)
                 .foregroundStyle(live ? Color.accent : Color.inkTertiary)
-            Text(date.map { Self.day.string(from: $0) } ?? "")
+            Text(date.map { Self.day.value.string(from: $0) } ?? "")
                 .font(.numeral(30))
                 .foregroundStyle(Color.inkPrimary)
         }

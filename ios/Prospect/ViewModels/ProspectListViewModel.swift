@@ -69,7 +69,7 @@ final class ProspectListViewModel {
                 LiveActivityManager.shared.start(session: session, prospects: prospects)
             }
         } catch {
-            errorMessage = "Impossible de charger les prospects : \(error.localizedDescription)"
+            errorMessage = L("Couldn't load prospects: \(error.localizedDescription)")
         }
     }
 
@@ -113,7 +113,7 @@ final class ProspectListViewModel {
                 await LiveActivityManager.shared.update(prospects: prospects)
             }
         } catch {
-            errorMessage = "Impossible d'archiver le prospect : \(error.localizedDescription)"
+            errorMessage = L("Couldn't archive the prospect: \(error.localizedDescription)")
         }
     }
 }

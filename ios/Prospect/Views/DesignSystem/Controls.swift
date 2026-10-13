@@ -121,7 +121,7 @@ struct CodeEntryField: View {
                 .keyboardType(.asciiCapable)
                 .frame(width: 1, height: 1)
                 .opacity(0.01)
-                .accessibilityLabel("Code de l'événement")
+                .accessibilityLabel(L("Event code"))
                 .onChange(of: code) { _, new in
                     let cleaned = String(new.uppercased().filter { $0.isLetter || $0.isNumber }.prefix(length))
                     if cleaned != new { code = cleaned }

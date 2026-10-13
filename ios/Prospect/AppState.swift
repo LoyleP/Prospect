@@ -22,6 +22,8 @@ final class AppState {
     var onboardingIntent: OnboardingIntent?
     /// Bumped to rebuild the whole UI tree (new view models) when the store is swapped.
     var epoch = 0
+    /// The language of the app: English unless the person chose another one.
+    private(set) var language: AppLanguage = Language.current
 
     /// A screen to open from outside its view (used by the debug menu and by incoming links).
     var route: Route?
@@ -57,7 +59,7 @@ final class AppState {
 
     /// The person's display name, written on every prospect they record.
     var agentNom: String { currentOrganization?.displayName ?? "" }
-    var eventLabel: String { currentOrganization?.eventLabel ?? "Événement" }
+    var eventLabel: String { currentOrganization?.eventLabel ?? L("Event") }
 
     func program(_ id: UUID?) -> Program? {
         guard let id else { return nil }
@@ -65,7 +67,17 @@ final class AppState {
     }
 
     func programName(_ id: UUID?) -> String {
-        program(id)?.name ?? "Sans programme"
+        program(id)?.name ?? L("No program")
+    }
+
+    // MARK: - Language
+
+    /// Every screen is rebuilt, so all text (including Strings computed along the way) is read again in the new language.
+    func setLanguage(_ new: AppLanguage) {
+        guard new != language else { return }
+        Language.current = new
+        language = new
+        epoch += 1
     }
 
     // MARK: - Identity
@@ -143,11 +155,11 @@ final class AppState {
             if phase == .ready, role == .agent {
                 do {
                     try join(invitation)
-                    importMessage = "Rejoint : \(invitation.name)"
+                    importMessage = L("Joined: \(invitation.name)")
                     epoch += 1
                 } catch { importMessage = error.localizedDescription }
             } else if phase == .ready {
-                importMessage = "Cette invitation s'ouvre sur le téléphone d'un agent."
+                importMessage = L("This invitation opens on an agent's phone.")
             } else {
                 pendingInvitation = invitation
                 onboardingIntent = .join
@@ -156,7 +168,7 @@ final class AppState {
         }
         guard url.pathExtension == Handover.fileExtension else { return }
         guard phase == .ready, isAdmin else {
-            importMessage = "Seul l'organisateur peut importer un envoi."
+            importMessage = L("Only the organizer can import a file.")
             return
         }
         let scoped = url.startAccessingSecurityScopedResource()
@@ -172,8 +184,10 @@ final class AppState {
 
     static func message(for outcome: ImportOutcome) -> String {
         let m = outcome.merge
-        if m.added == 0 && m.updated == 0 { return "\(outcome.agentName) : rien de nouveau (déjà importé)." }
-        return "\(outcome.agentName) : \(m.added) ajouté\(m.added > 1 ? "s" : "")" + (m.updated > 0 ? ", \(m.updated) mis à jour" : "")
+        if m.added == 0 && m.updated == 0 { return L("\(outcome.agentName): nothing new (already imported).") }
+        var parts = [L("\(m.added) added")]
+        if m.updated > 0 { parts.append(L("\(m.updated) updated")) }
+        return L("\(outcome.agentName): \(parts.joined(separator: ", "))")
     }
 
     // MARK: - Demo store (debug)

@@ -37,9 +37,9 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
         case .authorized: configure()
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { ok in
-                DispatchQueue.main.async { ok ? self.configure() : self.show("Autorisez la caméra dans les Réglages pour scanner l'invitation.") }
+                DispatchQueue.main.async { ok ? self.configure() : self.show(L("Allow camera access in Settings to scan the invitation.")) }
             }
-        default: show("Autorisez la caméra dans les Réglages pour scanner l'invitation.")
+        default: show(L("Allow camera access in Settings to scan the invitation."))
         }
     }
 
@@ -64,7 +64,7 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
     private func configure() {
         guard let device = AVCaptureDevice.default(for: .video),
               let input = try? AVCaptureDeviceInput(device: device), session.canAddInput(input) else {
-            show("Caméra indisponible sur cet appareil.")
+            show(L("Camera unavailable on this device."))
             return
         }
         session.addInput(input)

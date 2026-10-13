@@ -10,7 +10,7 @@ struct OnboardingView: View {
     /// Which way the last step change went, so the next screen enters from the side we are heading to.
     @State private var forward = true
     @State private var name = ""
-    @State private var eventLabel = "Événement"
+    @State private var eventLabel = L("Event")
     @State private var customLabel = ""
     @State private var invitation: Invitation?
     /// Who is joining: an agent records prospects, a conseiller receives what the organizer shares.
@@ -20,7 +20,8 @@ struct OnboardingView: View {
     @FocusState private var focused: Field?
     private enum Field { case name, custom, paste }
 
-    private static let labels = ["Événement", "JPO", "Salon", "Forum", "Portes ouvertes"]
+    /// The words an organizer may call their events. What they pick is saved as typed, in the language it was picked in.
+    private var labels: [String] { [L("Event"), L("Open day"), L("Fair"), "Forum", L("Open house")] }
     /// A plain slide: the next step comes in from the trailing edge and the current one leaves by the leading edge.
     /// Going back reverses both, so the path is always the same one walked backwards.
     private var slide: AnyTransition {
@@ -76,10 +77,11 @@ struct OnboardingView: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Retour")
+                .accessibilityLabel(L("Back"))
                 .padding(.leading, -Space.s)
             }
             Spacer()
+            if step == .choose { LanguageMenu().padding(.trailing, -Space.s) }
         }
         .frame(minHeight: 55)
     }
@@ -92,17 +94,17 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.bottom, Space.s)
             VStack(alignment: .leading, spacing: Space.xs) {
-                Text("Collectez vos prospects").font(.displayM).foregroundStyle(Color.inkPrimary)
-                Text("Sans compte : tout reste sur vos téléphones")
+                Text(L("Collect your prospects")).font(.displayM).foregroundStyle(Color.inkPrimary)
+                Text(L("No account: everything stays on your phones"))
                     .font(.textBody).foregroundStyle(Color.inkSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, Space.m)
             .appears(0)
-            choiceRow(icon: "flag", title: "Organiser") { go(.organize) }
+            choiceRow(icon: "flag", title: L("Organize")) { go(.organize) }
                 .accessibilityIdentifier("organize")
                 .appears(1)
-            choiceRow(icon: "qrcode.viewfinder", title: "Rejoindre") { go(.join) }
+            choiceRow(icon: "qrcode.viewfinder", title: L("Join")) { go(.join) }
                 .accessibilityIdentifier("join")
                 .appears(2)
         }
@@ -136,9 +138,9 @@ struct OnboardingView: View {
 
     private var organize: some View {
         VStack(alignment: .leading, spacing: Space.xl) {
-            Text("Organiser").font(.displayL).foregroundStyle(Color.inkPrimary)
+            Text(L("Organize")).font(.displayL).foregroundStyle(Color.inkPrimary)
 
-            TextField("", text: $name, prompt: Text("Votre nom").foregroundStyle(Color.inkTertiary))
+            TextField("", text: $name, prompt: Text(L("Your name")).foregroundStyle(Color.inkTertiary))
                 .font(.system(size: 28, weight: .semibold))
                 .foregroundStyle(Color.inkPrimary)
                 .tint(Color.accent)
@@ -150,22 +152,22 @@ struct OnboardingView: View {
                 .accessibilityIdentifier("organizerName")
 
             VStack(alignment: .leading, spacing: Space.s) {
-                Text("Événements").font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
+                Text(L("Events")).font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
                 PillFlowLayout(spacing: Space.s) {
-                    ForEach(Self.labels, id: \.self) { label in
+                    ForEach(labels, id: \.self) { label in
                         ChoiceChip(title: label, isSelected: customLabel.isEmpty && eventLabel == label) {
                             eventLabel = label; customLabel = ""
                         }
                     }
                 }
-                LabeledField(title: "Autre", isFocused: focused == .custom) {
+                LabeledField(title: L("Other"), isFocused: focused == .custom) {
                     TextField(eventLabel, text: $customLabel)
                         .textInputAutocapitalization(.sentences)
                         .focused($focused, equals: .custom)
                 }
             }
             Spacer(minLength: Space.l)
-            Button("Continuer", action: finishOrganizing)
+            Button(L("Continue"), action: finishOrganizing)
                 .buttonStyle(.primary)
                 .disabled(cleanName.isEmpty)
                 .accessibilityIdentifier("continueOrganize")
@@ -183,16 +185,16 @@ struct OnboardingView: View {
 
     private var join: some View {
         VStack(alignment: .leading, spacing: Space.l) {
-            Text("Rejoindre").font(.displayL).foregroundStyle(Color.inkPrimary)
+            Text(L("Join")).font(.displayL).foregroundStyle(Color.inkPrimary)
             ZStack(alignment: .top) {
                 if let invitation {
                     VStack(alignment: .leading, spacing: Space.l) {
                         eventCard(invitation)
                         HStack(spacing: Space.s) {
                             ChoiceChip(title: "Agent", isSelected: joinRole == .agent) { joinRole = .agent }
-                            ChoiceChip(title: "Conseiller", isSelected: joinRole == .conseillerFormation) { joinRole = .conseillerFormation }
+                            ChoiceChip(title: L("Advisor"), isSelected: joinRole == .conseillerFormation) { joinRole = .conseillerFormation }
                         }
-                        TextField("", text: $name, prompt: Text("Votre nom").foregroundStyle(Color.inkTertiary))
+                        TextField("", text: $name, prompt: Text(L("Your name")).foregroundStyle(Color.inkTertiary))
                             .font(.system(size: 28, weight: .semibold))
                             .foregroundStyle(Color.inkPrimary)
                             .tint(Color.accent)
@@ -203,7 +205,7 @@ struct OnboardingView: View {
                             .onSubmit { confirmJoin(invitation) }
                             .accessibilityIdentifier("agentName")
                         Spacer(minLength: Space.l)
-                        Button("Rejoindre") { confirmJoin(invitation) }
+                        Button(L("Join")) { confirmJoin(invitation) }
                             .buttonStyle(.primary)
                             .disabled(cleanName.isEmpty)
                             .accessibilityIdentifier("confirmJoin")
@@ -256,7 +258,7 @@ struct OnboardingView: View {
                     .frame(width: 44, height: 55)
                     .contentShape(Rectangle())
             }
-            .accessibilityLabel("Coller")
+            .accessibilityLabel(L("Paste"))
         }
         .padding(.leading, Space.l)
         .padding(.trailing, Space.xs)
@@ -320,9 +322,9 @@ struct OnboardingView: View {
             errorText = nil
             focused = .name
         } else if fromScan {
-            errorText = "Ce code n'est pas une invitation Prospect."
+            errorText = L("This code isn't a Prospect invitation.")
         } else if text.count > 12 {
-            errorText = "Ce lien n'est pas une invitation Prospect."
+            errorText = L("This link isn't a Prospect invitation.")
         }
     }
 

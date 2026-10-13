@@ -144,10 +144,10 @@ final class NearbyHost: NSObject {
         guard let (kind, payload) = Nearby.unframe(data) else { return }
         switch kind {
         case .handover:
-            let ack = onHandover?(payload) ?? Nearby.Ack(ok: false, error: "Réception indisponible.")
+            let ack = onHandover?(payload) ?? Nearby.Ack(ok: false, error: L("Receiving isn't available."))
             send(.handoverAck, (try? JSONEncoder().encode(ack)) ?? Data(), to: peer)
         case .eventAck:
-            onNotice?("Données envoyées à \(peer.displayName)")
+            onNotice?(L("Data sent to \(peer.displayName)"))
         default:
             break
         }
@@ -253,7 +253,7 @@ final class NearbyClient: NSObject {
         timeout = Task { [weak self] in
             try? await Task.sleep(for: .seconds(25))
             guard let self, !Task.isCancelled, self.state == .searching else { return }
-            self.finish(.failed("Organisateur introuvable. Il doit ouvrir Recevoir."))
+            self.finish(.failed(L("Organizer not found. They need to open Receive.")))
         }
     }
 
@@ -291,18 +291,18 @@ final class NearbyClient: NSObject {
                 timeout = Task { [weak self] in
                     try? await Task.sleep(for: .seconds(90))
                     guard let self, !Task.isCancelled, self.state == .sending else { return }
-                    self.finish(.failed("L'envoi a pris trop de temps."))
+                    self.finish(.failed(L("Sending took too long.")))
                 }
                 do {
                     try session?.send(Nearby.frame(.handover, outgoing), toPeers: [peer], with: .reliable)
                 } catch {
-                    finish(.failed("Envoi impossible."))
+                    finish(.failed(L("Couldn't send.")))
                 }
             } else {
                 state = .waiting
             }
         case .notConnected:
-            if invited, isBusy { finish(.failed(hello.role == "c" ? "L'organisateur n'a pas accepté." : "Connexion perdue.")) }
+            if invited, isBusy { finish(.failed(hello.role == "c" ? L("The organizer didn't accept.") : L("Connection lost."))) }
         case .connecting:
             break
         @unknown default:
@@ -315,13 +315,13 @@ final class NearbyClient: NSObject {
         switch kind {
         case .handoverAck:
             let ack = try? JSONDecoder().decode(Nearby.Ack.self, from: payload)
-            if ack?.ok == true { finish(.done(ack)) } else { finish(.failed(ack?.error ?? "Fichier refusé.")) }
+            if ack?.ok == true { finish(.done(ack)) } else { finish(.failed(ack?.error ?? L("File rejected."))) }
         case .eventData:
             if onEventData?(payload) == true {
                 try? session?.send(Nearby.frame(.eventAck), toPeers: [peer], with: .reliable)
                 finish(.done(nil))
             } else {
-                finish(.failed("Données illisibles."))
+                finish(.failed(L("Unreadable data.")))
             }
         default:
             break
@@ -335,7 +335,7 @@ extension NearbyClient: MCNearbyServiceBrowserDelegate {
     }
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, lostPeer peerID: MCPeerID) {}
     nonisolated func browser(_ browser: MCNearbyServiceBrowser, didNotStartBrowsingForPeers error: Error) {
-        Task { @MainActor in self.finish(.failed("Recherche impossible : autorisez le réseau local dans Réglages.")) }
+        Task { @MainActor in self.finish(.failed(L("Couldn't search: allow Local Network in Settings."))) }
     }
 }
 

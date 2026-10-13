@@ -47,6 +47,10 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSSupportsLiveActivities: true
+        # The app's languages (also what the App Store lists). English is the default.
+        CFBundleLocalizations:
+          - en
+          - fr
         UILaunchScreen:
           UIColorName: LaunchBackground
         UIApplicationSceneManifest:
@@ -54,9 +58,9 @@ targets:
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         ITSAppUsesNonExemptEncryption: false
-        NSCameraUsageDescription: La caméra sert à scanner l'invitation de l'organisateur.
+        NSCameraUsageDescription: The camera is used to scan the organizer's invitation.
         # Phone-to-phone transfer (Multipeer): the system asks for local network access the first time.
-        NSLocalNetworkUsageDescription: Prospect échange les prospects directement entre les téléphones proches, sans serveur.
+        NSLocalNetworkUsageDescription: Prospect exchanges prospects directly between nearby phones, without a server.
         NSBonjourServices:
           - _prospect-sync._tcp
           - _prospect-sync._udp
@@ -68,7 +72,7 @@ targets:
         # An agent's end-of-day file (.prospects), encrypted to the organizer; AirDrop and Mail open it in Prospect.
         UTExportedTypeDeclarations:
           - UTTypeIdentifier: com.flow.prospect.handover
-            UTTypeDescription: Envoi Prospect
+            UTTypeDescription: Prospect handover
             UTTypeConformsTo:
               - public.data
             UTTypeTagSpecification:
@@ -77,7 +81,7 @@ targets:
         # Apple requires one of the two document keys: a handover file is copied in, never edited in place.
         LSSupportsOpeningDocumentsInPlace: false
         CFBundleDocumentTypes:
-          - CFBundleTypeName: Envoi Prospect
+          - CFBundleTypeName: Prospect handover
             LSHandlerRank: Owner
             LSItemContentTypes:
               - com.flow.prospect.handover

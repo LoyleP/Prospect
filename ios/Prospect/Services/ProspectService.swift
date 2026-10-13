@@ -38,9 +38,9 @@ enum ServiceError: LocalizedError, Equatable {
 
     var errorDescription: String? {
         switch self {
-        case .notFound:   return "Élément introuvable."
-        case .notAllowed: return "Seul l'organisateur peut faire cela."
-        case .noIdentity: return "Choisissez d'abord votre nom."
+        case .notFound:   return L("Item not found.")
+        case .notAllowed: return L("Only the organizer can do that.")
+        case .noIdentity: return L("Choose your name first.")
         }
     }
 }

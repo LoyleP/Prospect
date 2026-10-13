@@ -23,6 +23,7 @@ struct EventLiveActivityWidget: Widget {
                             .foregroundStyle(.secondary)
                     }
                     .padding(.leading, 4)
+                    .environment(\.locale, context.attributes.locale)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
@@ -30,11 +31,12 @@ struct EventLiveActivityWidget: Widget {
                             .font(.title.bold())
                             .monospacedDigit()
                             .foregroundStyle(.blue)
-                        Text("taux RDV")
+                        Text("Meeting rate")
                             .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.trailing, 4)
+                    .environment(\.locale, context.attributes.locale)
                 }
                 DynamicIslandExpandedRegion(.center) {
                     Text(context.attributes.sessionName)
@@ -95,23 +97,29 @@ private struct SessionLockScreenView: View {
             HStack(spacing: 0) {
                 StatCell(value: "\(context.state.totalProspects)", label: "prospects")
                 Divider().frame(height: 32)
-                StatCell(value: "\(context.state.withRdv)", label: "avec RDV")
+                StatCell(value: "\(context.state.withRdv)", label: "With meeting")
                 Divider().frame(height: 32)
-                StatCell(value: "\(context.state.rdvRate)%", label: "taux RDV", accent: .blue)
+                StatCell(value: "\(context.state.rdvRate)%", label: "Meeting rate", accent: .blue)
             }
 
             // Progress bar
             RdvProgressBar(rate: context.state.rdvRate)
         }
         .padding(16)
+        .environment(\.locale, context.attributes.locale)
     }
+}
+
+extension SessionActivityAttributes {
+    /// The app's language, applied to the extension's text.
+    var locale: Locale { Locale(identifier: language == "fr" ? "fr_FR" : "en_US") }
 }
 
 // MARK: - Shared sub-views
 
 private struct StatCell: View {
     let value: String
-    let label: String
+    let label: LocalizedStringKey
     var accent: Color = .primary
 
     var body: some View {

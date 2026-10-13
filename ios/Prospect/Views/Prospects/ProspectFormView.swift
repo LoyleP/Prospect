@@ -31,7 +31,7 @@ struct ProspectFormView: View {
                   HStack(spacing: Space.s) {
                     if !vm.programs.isEmpty {
                         let current = vm.programs.first { $0.id == vm.programId }
-                        optionPill(label: current?.name ?? "Choisir un programme",
+                        optionPill(label: current?.name ?? L("Choose a program"),
                                    leading: AnyView(Circle().fill(current?.swiftUIColor ?? Color.inkTertiary).frame(width: 9, height: 9)),
                                    dimmed: current == nil, needsAttention: current == nil) {
                             ForEach(vm.programs) { program in
@@ -63,7 +63,7 @@ struct ProspectFormView: View {
                 // Everything typed lives in one grouped block: names, then contact.
                 VStack(spacing: 0) {
                     detailRow(icon: "person") {
-                        TextField("", text: $vm.prenom, prompt: Text("Prénom").foregroundStyle(Color.inkTertiary))
+                        TextField("", text: $vm.prenom, prompt: Text(L("First name")).foregroundStyle(Color.inkTertiary))
                             .textContentType(.givenName)
                             .textInputAutocapitalization(.words)
                             .focused($focused, equals: .prenom)
@@ -72,7 +72,7 @@ struct ProspectFormView: View {
                     }
                     Rule().padding(.leading, 48)
                     detailRow(icon: "person") {
-                        TextField("", text: $vm.nom, prompt: Text("Nom").foregroundStyle(Color.inkTertiary))
+                        TextField("", text: $vm.nom, prompt: Text(L("Last name")).foregroundStyle(Color.inkTertiary))
                             .textContentType(.familyName)
                             .textInputAutocapitalization(.words)
                             .focused($focused, equals: .nom)
@@ -92,7 +92,7 @@ struct ProspectFormView: View {
                     }
                     Rule().padding(.leading, 48)
                     detailRow(icon: "phone") {
-                        TextField("", text: $vm.telephone, prompt: Text("Téléphone").foregroundStyle(Color.inkTertiary))
+                        TextField("", text: $vm.telephone, prompt: Text(L("Phone")).foregroundStyle(Color.inkTertiary))
                             .textContentType(.telephoneNumber)
                             .keyboardType(.phonePad)
                             .focused($focused, equals: .phone)
@@ -106,8 +106,8 @@ struct ProspectFormView: View {
                 }
                 .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
 
-                if showEmailError { InlineError(text: "Adresse email invalide") }
-                if showPhoneError { InlineError(text: "Numéro invalide") }
+                if showEmailError { InlineError(text: L("Invalid email address")) }
+                if showPhoneError { InlineError(text: L("Invalid number")) }
             }
             .padding(.horizontal, Space.l)
             .padding(.top, Space.s)
@@ -121,7 +121,7 @@ struct ProspectFormView: View {
                 // Same width as the close button, so the title stays centered.
                 Color.clear.frame(width: 55, height: 55)
                 Spacer()
-                Text(isReadOnly ? "Prospect" : (isCreate ? "Nouveau prospect" : "Modifier"))
+                Text(isReadOnly ? "Prospect" : (isCreate ? L("New prospect") : L("Edit")))
                     .font(.textSub.weight(.medium))
                     .foregroundStyle(Color.inkSecondary)
                 Spacer()
@@ -134,13 +134,13 @@ struct ProspectFormView: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Fermer")
+                .accessibilityLabel(L("Close"))
             }
             .padding(.horizontal, Space.s)
             .padding(.top, Space.xs)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { if !isReadOnly { saveBar } }
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
         )) {
@@ -202,7 +202,7 @@ struct ProspectFormView: View {
             Task { await save() }
         } label: {
             ZStack {
-                Text(isCreate ? "Ajouter" : "Enregistrer").opacity(viewModel.isSaving ? 0 : 1)
+                Text(isCreate ? L("Add") : L("Save")).opacity(viewModel.isSaving ? 0 : 1)
                 if viewModel.isSaving { ProgressView().tint(Color.onAccent) }
             }
         }
@@ -242,7 +242,7 @@ struct ProspectFormView: View {
 /// Demo event for the preview above. Not Debug-only: Release builds still compile #Preview bodies.
 enum TestPreviewData {
     static let session = Session(
-        id: UUID(), name: "Salon", date: "2026-11-14", isArchived: false, statutSession: .enCours,
+        id: UUID(), name: L("Fair"), date: "2026-11-14", isArchived: false, statutSession: .enCours,
         preRegistered: 0, rdvTargetLow: 0, rdvTargetHigh: 0, programObjectives: [:], createdAt: "2026-10-01T09:00:00.000Z"
     )
 }

@@ -71,7 +71,7 @@ final class ObjectivesViewModel {
             savedProgramObjectives = programObjectives
             saveSuccess = true
         } catch {
-            errorMessage = "Impossible de sauvegarder : \(error.localizedDescription)"
+            errorMessage = L("Couldn't save: \(error.localizedDescription)")
         }
     }
 }

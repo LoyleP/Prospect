@@ -11,24 +11,24 @@ enum Role: String, CaseIterable, Codable, Sendable {
     var label: String {
         switch self {
         case .agent:               return "Agent"
-        case .conseillerFormation: return "Conseiller"
-        case .admin:               return "Administrateur"
+        case .conseillerFormation: return L("Advisor")
+        case .admin:               return L("Administrator")
         }
     }
 
     var shortLabel: String {
         switch self {
         case .agent:               return "Agent"
-        case .conseillerFormation: return "Conseiller"
+        case .conseillerFormation: return L("Advisor")
         case .admin:               return "Admin"
         }
     }
 
     var summary: String {
         switch self {
-        case .agent:               return "Enregistre et modifie les prospects."
-        case .conseillerFormation: return "Consulte les prospects et exporte les données."
-        case .admin:               return "Gère les événements, l'équipe et les programmes."
+        case .agent:               return L("Records and edits prospects.")
+        case .conseillerFormation: return L("Views prospects and exports data.")
+        case .admin:               return L("Manages events, the team and programs.")
         }
     }
 }
@@ -43,9 +43,9 @@ enum SessionStatut: String, CaseIterable, Codable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .pasCommence: return "Pas commencé"
-        case .enCours:     return "En cours"
-        case .termine:     return "Terminé"
+        case .pasCommence: return L("Not started")
+        case .enCours:     return L("In progress")
+        case .termine:     return L("Finished")
         }
     }
 }

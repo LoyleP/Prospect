@@ -9,8 +9,8 @@ struct InvitationCard: View {
     var body: some View {
         VStack(spacing: Space.l) {
             QRCodeView(text: url.absoluteString, size: 220)
-            ShareLink(item: url, subject: Text(eventName), message: Text("Rejoins « \(eventName) » sur Prospect")) {
-                Label("Partager le lien", systemImage: "square.and.arrow.up")
+            ShareLink(item: url, subject: Text(eventName), message: Text(L("Join “\(eventName)” on Prospect"))) {
+                Label(L("Share the link"), systemImage: "square.and.arrow.up")
             }
             .buttonStyle(.secondary)
         }
@@ -30,7 +30,7 @@ struct InvitationSheet: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             HStack {
-                Text("Inviter").font(.displayS).foregroundStyle(Color.inkPrimary)
+                Text(L("Invite")).font(.displayS).foregroundStyle(Color.inkPrimary)
                 Spacer()
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
@@ -41,7 +41,7 @@ struct InvitationSheet: View {
                         .frame(width: 55, height: 55)
                         .contentShape(Rectangle())
                 }
-                .accessibilityLabel("Fermer")
+                .accessibilityLabel(L("Close"))
             }
             if let url = try? appState.exchange.invitation(for: eventId).url {
                 InvitationCard(url: url, eventName: eventName)

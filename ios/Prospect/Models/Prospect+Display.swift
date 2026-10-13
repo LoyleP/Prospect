@@ -14,27 +14,27 @@ enum ISODates {
         fractional.date(from: string) ?? plain.date(from: string)
     }
 
-    private static let relative: RelativeDateTimeFormatter = {
+    private static let relative = PerLanguage<RelativeDateTimeFormatter> { language in
         let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "fr_FR")
+        f.locale = language.locale
         f.unitsStyle = .short
         return f
-    }()
+    }
 
-    private static let shortDate: DateFormatter = {
+    private static let shortDate = PerLanguage<DateFormatter> { language in
         let f = DateFormatter()
-        f.locale = Locale(identifier: "fr_FR")
-        f.dateFormat = "d MMM · HH:mm"
+        f.locale = language.locale
+        f.dateFormat = language == .fr ? "d MMM · HH:mm" : "MMM d · HH:mm"
         return f
-    }()
+    }
 
-    /// "il y a 5 min" within the last day, "14 nov. · 10:42" otherwise.
+    /// "5 min ago" within the last day, "Nov 14 · 10:42" otherwise (in French, "il y a 5 min" and "14 nov. · 10:42").
     static func friendly(_ string: String, now: Date = Date()) -> String {
         guard let date = parse(string) else { return "" }
         if now.timeIntervalSince(date) < 86_400, date <= now.addingTimeInterval(60) {
-            return relative.localizedString(for: date, relativeTo: now)
+            return relative.value.localizedString(for: date, relativeTo: now)
         }
-        return shortDate.string(from: date)
+        return shortDate.value.string(from: date)
     }
 }
 

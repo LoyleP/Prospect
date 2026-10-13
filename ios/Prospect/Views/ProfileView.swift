@@ -18,11 +18,11 @@ struct ProfileView: View {
             VStack(alignment: .leading, spacing: Space.xl) {
                 header
 
-                NumberedSection(number: "01", title: "Activité") {
+                NumberedSection(number: "01", title: L("Activity")) {
                     HStack(alignment: .top, spacing: 0) {
                         stat("\(viewModel.totalProspects)", "prospects")
-                        stat("\(viewModel.rdvCount)", "RDV")
-                        stat("\(Int(viewModel.rdvRate.rounded())) %", "taux")
+                        stat("\(viewModel.rdvCount)", L("Meetings"))
+                        stat(Language.percent(Int(viewModel.rdvRate.rounded())), L("Rate"))
                     }
                     .opacity(viewModel.isLoading ? 0.35 : 1)
                     .animation(.curve(0.2), value: viewModel.isLoading)
@@ -30,12 +30,14 @@ struct ProfileView: View {
 
                 if !appState.isAdmin {
                     VStack(spacing: 0) {
-                        row("Rejoindre un autre événement", icon: "qrcode.viewfinder") { showJoin = true }
+                        row(L("Join another event"), icon: "qrcode.viewfinder") { showJoin = true }
                     }
                     .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
                 }
 
-                Button("Réinitialiser cet appareil") { showReset = true }
+                LanguageMenu(style: .row)
+
+                Button(L("Reset this device")) { showReset = true }
                     .buttonStyle(.secondary)
             }
             .padding(.horizontal, Space.gutter)
@@ -54,7 +56,7 @@ struct ProfileView: View {
                     .contentShape(Rectangle())
             }
             .padding(Space.l)
-            .accessibilityLabel("Fermer")
+            .accessibilityLabel(L("Close"))
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
@@ -62,14 +64,14 @@ struct ProfileView: View {
         .sheet(isPresented: $showJoin) {
             JoinSheet().presentationBackground(Color.surfaceBackground)
         }
-        .alert("Réinitialiser cet appareil ?", isPresented: $showReset) {
-            Button("Réinitialiser", role: .destructive) {
+        .alert(L("Reset this device?"), isPresented: $showReset) {
+            Button(L("Reset"), role: .destructive) {
                 dismiss()
                 appState.resetDevice()
             }
-            Button("Annuler", role: .cancel) {}
+            Button(L("Cancel"), role: .cancel) {}
         }
-        .alert("Erreur", isPresented: Binding(
+        .alert(L("Error"), isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }
         )) {
@@ -85,7 +87,7 @@ struct ProfileView: View {
             Monogram(name: appState.agentNom, size: 64)
             VStack(alignment: .leading, spacing: 6) {
                 if editingName {
-                    TextField("Votre nom", text: $newName)
+                    TextField(L("Your name"), text: $newName)
                         .font(.displayS)
                         .focused($nameFocused)
                         .submitLabel(.done)
@@ -100,7 +102,7 @@ struct ProfileView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                Stamp(text: appState.isAdmin ? "Organisateur" : (appState.isConseiller ? "Conseiller" : "Agent"), color: appState.isAdmin ? .adminAccent : .info)
+                Stamp(text: appState.isAdmin ? L("Organizer") : (appState.isConseiller ? L("Advisor") : "Agent"), color: appState.isAdmin ? .adminAccent : .info)
             }
             Spacer(minLength: 40)
         }

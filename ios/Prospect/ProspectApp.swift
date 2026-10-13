@@ -57,6 +57,7 @@ struct ProspectApp: App {
         WindowGroup {
             ContentView()
                 .environment(appState)
+                .environment(\.locale, appState.language.locale)
                 .tint(Color.inkPrimary)
                 // Dark only, by design: the UI is built for dim, busy event halls.
                 .preferredColorScheme(.dark)

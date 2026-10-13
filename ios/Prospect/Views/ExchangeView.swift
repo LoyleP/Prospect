@@ -50,15 +50,15 @@ struct ExchangeView: View {
             DuplicatesView(groups: vm.duplicateGroups) { vm.archiveDuplicate($0) }
                 .presentationBackground(Color.surfaceBackground)
         }
-        .confirmationDialog("Terminer cet événement ?", isPresented: $confirmEnd, titleVisibility: .visible) {
-            Button("Terminer") { vm.finishEvent() }
-            Button("Annuler", role: .cancel) {}
+        .confirmationDialog(L("End this event?"), isPresented: $confirmEnd, titleVisibility: .visible) {
+            Button(L("End")) { vm.finishEvent() }
+            Button(L("Cancel"), role: .cancel) {}
         }
     }
 
     // MARK: Header
 
-    private var heading: String { appState.isAdmin ? "Collecte" : (appState.isConseiller ? "Réception" : "Envoi") }
+    private var heading: String { appState.isAdmin ? L("Collect") : (appState.isConseiller ? L("Inbox") : L("Send")) }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: Space.s) {
@@ -87,8 +87,8 @@ struct ExchangeView: View {
 
     private var empty: some View {
         EmptyStateView(
-            title: appState.isAdmin ? "Aucun événement" : "Aucun événement rejoint",
-            message: appState.isAdmin ? "Créez-en un dans l'onglet Prospects." : "Scannez l'invitation de l'organisateur."
+            title: appState.isAdmin ? L("No events") : L("No event joined"),
+            message: appState.isAdmin ? L("Create one in the Prospects tab.") : L("Scan the organizer's invitation.")
         )
         .padding(.horizontal, -Space.gutter)
     }
@@ -105,16 +105,17 @@ struct ExchangeView: View {
 
         VStack(alignment: .leading, spacing: Space.m) {
             if !event.receipts.isEmpty {
-                Text("Reçus (\(event.receipts.count))")
+                Text(L("Received (\(event.receipts.count))"))
                     .font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
 
                 VStack(spacing: 0) {
                     ForEach(Array(event.receipts.sorted { $0.receivedAt > $1.receivedAt }.enumerated()), id: \.element.id) { index, r in
+                        let receivedCount = L("\(r.count) prospects")
                         HStack(spacing: Space.m) {
                             Monogram(name: r.agentName, size: 40)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(r.agentName).font(.textBody).foregroundStyle(Color.inkPrimary)
-                                Text("\(r.count) prospect\(r.count > 1 ? "s" : "") · \(Self.relative(r.receivedAt))")
+                                Text("\(receivedCount) · \(Self.relative(r.receivedAt))")
                                     .font(.textFootnote).foregroundStyle(Color.inkSecondary)
                             }
                             Spacer()
@@ -128,7 +129,7 @@ struct ExchangeView: View {
                 .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
             }
             Button { showImporter = true } label: {
-                Label("Importer un envoi", systemImage: "tray.and.arrow.down")
+                Label(L("Import a file"), systemImage: "tray.and.arrow.down")
             }
             .buttonStyle(.secondary)
             .accessibilityIdentifier("importHandover")
@@ -141,7 +142,7 @@ struct ExchangeView: View {
                     Image(systemName: event.importsComplete ? "checkmark.circle.fill" : "circle")
                         .contentTransition(.symbolEffect(.replace))
                         .symbolEffect(.bounce, value: event.importsComplete)
-                    Text("Imports terminés")
+                    Text(L("Imports complete"))
                 }
                 .foregroundStyle(event.importsComplete ? Color.success : Color.inkPrimary)
             }
@@ -153,7 +154,7 @@ struct ExchangeView: View {
             Button { showDuplicates = true } label: {
                 HStack(spacing: Space.m) {
                     Image(systemName: "person.2.slash").foregroundStyle(Color.warning)
-                    Text("\(vm.duplicateGroups.count) doublon\(vm.duplicateGroups.count > 1 ? "s" : "") possible\(vm.duplicateGroups.count > 1 ? "s" : "")")
+                    Text(L("\(vm.duplicateGroups.count) possible duplicates"))
                         .font(.textBody).foregroundStyle(Color.inkPrimary)
                     Spacer()
                     Image(systemName: "chevron.right").font(.system(size: 13, weight: .semibold)).foregroundStyle(Color.inkTertiary)
@@ -167,10 +168,10 @@ struct ExchangeView: View {
         }
 
         if event.status != .termine {
-            Button("Terminer l'événement") { confirmEnd = true }
+            Button(L("End the event")) { confirmEnd = true }
                 .buttonStyle(.secondary)
         } else {
-            Text("Événement terminé").font(.textSub).foregroundStyle(Color.inkTertiary)
+            Text(L("Event finished")).font(.textSub).foregroundStyle(Color.inkTertiary)
         }
     }
 
@@ -187,7 +188,7 @@ struct ExchangeView: View {
                     Text("+\(vm.newSinceSend)").font(.textHeadline).foregroundStyle(Color.accent)
                 }
             }
-            Text("prospect\(vm.mineCount > 1 ? "s" : "")").font(.textSub).foregroundStyle(Color.inkSecondary)
+            Text(prospectsNoun(vm.mineCount)).font(.textSub).foregroundStyle(Color.inkSecondary)
             if let sent = event.lastSentAt {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
@@ -223,7 +224,7 @@ struct ExchangeView: View {
             Text("\(event.activeProspects.count)").font(.numeral(56)).foregroundStyle(Color.inkPrimary)
                 .contentTransition(.numericText())
                 .animation(.curve(Motion.standard), value: event.activeProspects.count)
-            Text("prospect\(event.activeProspects.count > 1 ? "s" : "")").font(.textSub).foregroundStyle(Color.inkSecondary)
+            Text(prospectsNoun(event.activeProspects.count)).font(.textSub).foregroundStyle(Color.inkSecondary)
             if let received = event.lastSentAt {
                 HStack(spacing: 6) {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.success)
@@ -251,9 +252,9 @@ struct ExchangeView: View {
 
     private var busyText: String {
         switch vm.client.state {
-        case .waiting: return appState.isConseiller ? "En attente de l'organisateur" : "Connexion"
-        case .sending: return "Envoi"
-        default: return "Recherche"
+        case .waiting: return appState.isConseiller ? L("Waiting for the organizer") : L("Connecting…")
+        case .sending: return L("Sending…")
+        default: return L("Searching…")
         }
     }
 
@@ -268,9 +269,9 @@ struct ExchangeView: View {
                         .font(.system(size: 18, weight: .medium))
                         .foregroundStyle(Color.accent)
                         .symbolEffect(.variableColor.iterative, options: .repeating)
-                    Text("À l'écoute").font(.textHeadline).foregroundStyle(Color.inkPrimary)
+                    Text(L("Listening")).font(.textHeadline).foregroundStyle(Color.inkPrimary)
                     Spacer()
-                    Button("Arrêter") { Haptics.tap(); vm.stopReceiving() }
+                    Button(L("Stop")) { Haptics.tap(); vm.stopReceiving() }
                         .font(.textBody.weight(.medium))
                         .foregroundStyle(Color.inkSecondary)
                         .frame(minWidth: 55, minHeight: 55)
@@ -286,7 +287,7 @@ struct ExchangeView: View {
                         Monogram(name: request.name, size: 40)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(request.name).font(.textBody).foregroundStyle(Color.inkPrimary)
-                            Text("Conseiller").font(.textFootnote).foregroundStyle(Color.inkSecondary)
+                            Text(L("Advisor")).font(.textFootnote).foregroundStyle(Color.inkSecondary)
                         }
                         Spacer()
                         Button { Haptics.success(); vm.host.decline(request) } label: {
@@ -295,14 +296,14 @@ struct ExchangeView: View {
                                 .frame(width: 44, height: 44)
                                 .background(Color.surfaceCard2, in: Circle())
                         }
-                        .accessibilityLabel("Refuser")
+                        .accessibilityLabel(L("Decline"))
                         Button { Haptics.success(); vm.host.approve(request) } label: {
                             Image(systemName: "checkmark").font(.system(size: 13, weight: .semibold))
                                 .foregroundStyle(Color.onAccent)
                                 .frame(width: 44, height: 44)
                                 .background(Color.accent, in: Circle())
                         }
-                        .accessibilityLabel("Envoyer les données")
+                        .accessibilityLabel(L("Send the data"))
                         .accessibilityIdentifier("approveConseiller")
                     }
                     .padding(.horizontal, Space.l)
@@ -312,7 +313,7 @@ struct ExchangeView: View {
                 }
             } else {
                 Button { vm.startReceiving() } label: {
-                    Label("Recevoir", systemImage: "dot.radiowaves.left.and.right")
+                    Label(L("Receive"), systemImage: "dot.radiowaves.left.and.right")
                 }
                 .buttonStyle(.primary)
                 .accessibilityIdentifier("startReceiving")
@@ -326,16 +327,16 @@ struct ExchangeView: View {
 
     private static func relative(_ date: Date) -> String {
         // A file that just arrived is stamped a hair after "now": don't print "dans 0 s".
-        if abs(date.timeIntervalSinceNow) < 10 { return "à l'instant" }
+        if abs(date.timeIntervalSinceNow) < 10 { return L("just now") }
         let f = RelativeDateTimeFormatter()
-        f.locale = Locale(identifier: "fr_FR")
+        f.locale = Language.current.locale
         f.unitsStyle = .short
         return f.localizedString(for: date, relativeTo: Date())
     }
 
     private static func time(_ date: Date) -> String {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "fr_FR")
+        f.locale = Language.current.locale
         f.dateFormat = "HH:mm"
         return f.string(from: date)
     }

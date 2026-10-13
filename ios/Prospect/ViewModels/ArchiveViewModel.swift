@@ -21,7 +21,7 @@ final class ArchiveViewModel {
         do {
             prospects = try await service.fetchArchivedProspects()
         } catch {
-            errorMessage = "Impossible de charger l'archive : \(error.localizedDescription)"
+            errorMessage = L("Couldn't load the archive: \(error.localizedDescription)")
         }
     }
 
@@ -30,7 +30,7 @@ final class ArchiveViewModel {
             try await service.restoreProspect(id: prospect.id)
             prospects.removeAll { $0.id == prospect.id }
         } catch {
-            errorMessage = "Impossible de restaurer le prospect : \(error.localizedDescription)"
+            errorMessage = L("Couldn't restore the prospect: \(error.localizedDescription)")
         }
     }
 }

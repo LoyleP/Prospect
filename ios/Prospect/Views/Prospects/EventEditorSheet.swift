@@ -23,13 +23,13 @@ struct EventEditorSheet: View {
             PaperBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.xl) {
-                    Text(mode == .create ? "Créer : \(eventLabel)" : "Modifier")
+                    Text(mode == .create ? L("Create: \(eventLabel)") : L("Edit"))
                         .font(.displayM.weight(.bold))
                         .foregroundStyle(Color.inkPrimary)
                         .padding(.trailing, 40)
 
-                    LabeledField(title: "Nom", isFocused: nameFocused) {
-                        TextField("ex. \(eventLabel) de novembre", text: $name)
+                    LabeledField(title: L("Last name"), isFocused: nameFocused) {
+                        TextField(L("e.g. \(eventLabel) in November"), text: $name)
                             .textInputAutocapitalization(.sentences)
                             .focused($nameFocused)
                             .submitLabel(.done)
@@ -43,7 +43,7 @@ struct EventEditorSheet: View {
                             .tracking(0.6)
                         DatePicker("Date", selection: $date, displayedComponents: .date)
                             .datePickerStyle(.graphical)
-                            .environment(\.locale, Locale(identifier: "fr_FR"))
+                            .environment(\.locale, Language.current.locale)
                             .tint(Color.inkPrimary)
                             .card(padding: Space.s)
                     }
@@ -53,15 +53,15 @@ struct EventEditorSheet: View {
                             get: { endsAt != nil },
                             set: { endsAt = $0 ? Self.merge(time: Self.defaultEnd(on: date), into: date) : nil }
                         )) {
-                            Label("Rappel de fin", systemImage: "bell").font(.textBody).foregroundStyle(Color.inkPrimary)
+                            Label(L("End reminder"), systemImage: "bell").font(.textBody).foregroundStyle(Color.inkPrimary)
                         }
                         .tint(Color.accent)
                         if let end = endsAt {
-                            DatePicker("Heure de fin", selection: Binding(
+                            DatePicker(L("End time"), selection: Binding(
                                 get: { end },
                                 set: { endsAt = Self.merge(time: $0, into: date) }
                             ), displayedComponents: .hourAndMinute)
-                            .environment(\.locale, Locale(identifier: "fr_FR"))
+                            .environment(\.locale, Language.current.locale)
                             .tint(Color.accent)
                         }
                     }
@@ -71,7 +71,7 @@ struct EventEditorSheet: View {
                     if mode == .edit {
                         ProgramsSection()
                         VStack(alignment: .leading, spacing: Space.m) {
-                            Text("Statut")
+                            Text(L("Status"))
                                 .font(.textCaption.weight(.semibold))
                                 .foregroundStyle(Color.inkSecondary)
                                 .tracking(0.6)
@@ -88,7 +88,7 @@ struct EventEditorSheet: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Button(action: onSave) {
                 ZStack {
-                    Text(mode == .create ? "Créer" : "Enregistrer").opacity(isSaving ? 0 : 1)
+                    Text(mode == .create ? L("Create") : L("Save")).opacity(isSaving ? 0 : 1)
                     if isSaving { ProgressView().tint(Color.onAccent) }
                 }
             }
@@ -111,7 +111,7 @@ struct EventEditorSheet: View {
                     .contentShape(Rectangle())
             }
             .padding(Space.l)
-            .accessibilityLabel("Fermer")
+            .accessibilityLabel(L("Close"))
         }
         .presentationDragIndicator(.visible)
         .onAppear { if mode == .create { nameFocused = true } }

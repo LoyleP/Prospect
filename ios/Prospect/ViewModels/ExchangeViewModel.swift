@@ -133,10 +133,10 @@ final class ExchangeViewModel {
         switch state {
         case .done:
             if exchange.store.read({ $0.identity?.role }) == .conseillerFormation {
-                message = "\(pendingCount) prospect\(pendingCount > 1 ? "s" : "") reçu\(pendingCount > 1 ? "s" : "")"
+                message = L("\(pendingCount) prospects received")
             } else {
                 markSent(count: pendingCount)
-                message = "Envoyé"
+                message = L("Sent")
             }
             load()
         case .failed(let text):
@@ -151,7 +151,7 @@ final class ExchangeViewModel {
     func startReceiving() {
         guard let e = selected, e.isOrganizer else { return }
         host.onHandover = { [weak self] data in
-            guard let self else { return Nearby.Ack(ok: false, error: "Réception indisponible.") }
+            guard let self else { return Nearby.Ack(ok: false, error: L("Receiving isn't available.")) }
             do {
                 let outcome = try self.exchange.importHandover(data)
                 self.message = AppState.message(for: outcome)

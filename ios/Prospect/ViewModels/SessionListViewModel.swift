@@ -55,7 +55,7 @@ final class SessionListViewModel {
                 selectedSummary = activeSummaries.first(where: { $0.statutSession == .enCours }) ?? activeSummaries.first ?? summaries.first
             }
         } catch {
-            errorMessage = "Impossible de charger les événements : \(error.localizedDescription)"
+            errorMessage = L("Couldn't load events: \(error.localizedDescription)")
         }
     }
 
@@ -78,7 +78,7 @@ final class SessionListViewModel {
             selectedSummary = created
             await load()
         } catch {
-            errorMessage = "Erreur lors de la création : \(error.localizedDescription)"
+            errorMessage = L("Couldn't create: \(error.localizedDescription)")
         }
     }
 
@@ -104,7 +104,7 @@ final class SessionListViewModel {
             sessionToEdit = nil
             await load()
         } catch {
-            errorMessage = "Erreur lors de la modification : \(error.localizedDescription)"
+            errorMessage = L("Couldn't edit: \(error.localizedDescription)")
         }
     }
 
@@ -118,7 +118,7 @@ final class SessionListViewModel {
             if selectedSummary?.id == session.id { selectedSummary = nil }
             await load()
         } catch {
-            errorMessage = "Erreur lors de la suppression : \(error.localizedDescription)"
+            errorMessage = L("Couldn't delete: \(error.localizedDescription)")
         }
     }
 
@@ -127,7 +127,7 @@ final class SessionListViewModel {
             _ = try await service.updateSession(id: summary.id, SessionPatch(isArchived: !summary.isArchived))
             await load()
         } catch {
-            errorMessage = "Erreur lors de l'archivage : \(error.localizedDescription)"
+            errorMessage = L("Couldn't archive: \(error.localizedDescription)")
         }
     }
 }

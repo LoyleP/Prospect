@@ -101,6 +101,23 @@ enum DebugLaunch {
     static func apply(to state: AppState) {
         guard let scenario = requested() else { return }
         start(scenario, on: state)
+        let args = ProcessInfo.processInfo.arguments
+        // `-debugImportsComplete`: the organizer already confirmed every import (no amber banner on Stats).
+        if args.contains("-debugImportsComplete") {
+            state.store.write { data in
+                for i in data.events.indices where data.events[i].isOrganizer { data.events[i].importsComplete = true }
+            }
+            state.epoch += 1
+        }
+        // `-debugTab prospects|dashboard|archive|exchange`: open straight on a tab (screenshots).
+        if let i = args.firstIndex(of: "-debugTab"), args.indices.contains(i + 1) {
+            switch args[i + 1] {
+            case "dashboard": state.selectedTab = .dashboard
+            case "archive":   state.selectedTab = .archive
+            case "exchange":  state.selectedTab = .exchange
+            default:          state.selectedTab = .prospects
+            }
+        }
     }
 
     @MainActor

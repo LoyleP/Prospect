@@ -31,7 +31,7 @@ final class ProfileViewModel {
             sessionCount   = stats.events
             rdvCount       = stats.rdv
         } catch {
-            errorMessage = "Impossible de charger le profil : \(error.localizedDescription)"
+            errorMessage = L("Couldn't load the profile: \(error.localizedDescription)")
         }
     }
 }

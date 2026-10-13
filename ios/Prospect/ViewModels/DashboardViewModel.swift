@@ -166,7 +166,7 @@ final class DashboardViewModel {
                 await loadProspects(for: s)
             }
         } catch {
-            errorMessage = "Erreur de chargement : \(error.localizedDescription)"
+            errorMessage = L("Loading error: \(error.localizedDescription)")
         }
     }
 
@@ -183,7 +183,7 @@ final class DashboardViewModel {
             prospects = try await service.fetchProspects(sessionId: summary.id)
             lastUpdatedAt = Date()
         } catch {
-            errorMessage = "Impossible de charger les données : \(error.localizedDescription)"
+            errorMessage = L("Couldn't load the data: \(error.localizedDescription)")
         }
     }
 }
