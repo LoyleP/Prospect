@@ -1,23 +1,6 @@
 {
   "sourceLanguage": "en",
   "strings": {
-    "Event": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Event"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Événement"
-          }
-        }
-      }
-    },
     "No program": {
       "extractionState": "manual",
       "localizations": {
@@ -290,23 +273,6 @@
         }
       }
     },
-    "Couldn't load events: %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Couldn't load events: %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Impossible de charger les événements : %@"
-          }
-        }
-      }
-    },
     "Couldn't create: %@": {
       "extractionState": "manual",
       "localizations": {
@@ -562,23 +528,6 @@
         }
       }
     },
-    "Manages events, the team and programs.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manages events, the team and programs."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gère les événements, l'équipe et les programmes."
-          }
-        }
-      }
-    },
     "Not started": {
       "extractionState": "manual",
       "localizations": {
@@ -800,40 +749,6 @@
         }
       }
     },
-    "Only this event's organizer can do that.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Only this event's organizer can do that."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Seul l'organisateur de cet événement peut faire cela."
-          }
-        }
-      }
-    },
-    "This event doesn't exist on this phone.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This event doesn't exist on this phone."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cet événement n'existe pas sur ce téléphone."
-          }
-        }
-      }
-    },
     "This code isn't a Prospect invitation.": {
       "extractionState": "manual",
       "localizations": {
@@ -885,23 +800,6 @@
         }
       }
     },
-    "This file belongs to another event.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This file belongs to another event."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ce fichier appartient à un autre événement."
-          }
-        }
-      }
-    },
     "Can't read this file: it isn't meant for this device.": {
       "extractionState": "manual",
       "localizations": {
@@ -915,23 +813,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Impossible de lire ce fichier : il n'est pas destiné à cet appareil."
-          }
-        }
-      }
-    },
-    "This event's key can't be found on this phone.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This event's key can't be found on this phone."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La clé de cet événement est introuvable sur ce téléphone."
           }
         }
       }
@@ -1361,23 +1242,6 @@
         }
       }
     },
-    "Figures appear once prospects are recorded for the current %@.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Figures appear once prospects are recorded for the current %@."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les chiffres apparaissent dès qu'un %@ existe et que des prospects sont enregistrés."
-          }
-        }
-      }
-    },
     "No prospects.": {
       "extractionState": "manual",
       "localizations": {
@@ -1391,23 +1255,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Aucun prospect."
-          }
-        }
-      }
-    },
-    "No figures for this event yet.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No figures for this event yet."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas encore de chiffres pour cet événement."
           }
         }
       }
@@ -1803,23 +1650,6 @@
         }
       }
     },
-    "End this event?": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End this event?"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminer cet événement ?"
-          }
-        }
-      }
-    },
     "End": {
       "extractionState": "manual",
       "localizations": {
@@ -1850,40 +1680,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Annuler"
-          }
-        }
-      }
-    },
-    "No events": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No events"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun événement"
-          }
-        }
-      }
-    },
-    "No event joined": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No event joined"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun événement rejoint"
           }
         }
       }
@@ -1969,40 +1765,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Imports terminés"
-          }
-        }
-      }
-    },
-    "End the event": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End the event"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Terminer l'événement"
-          }
-        }
-      }
-    },
-    "Event finished": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Event finished"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Événement terminé"
           }
         }
       }
@@ -2258,23 +2020,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Activité"
-          }
-        }
-      }
-    },
-    "Join another event": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Join another event"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rejoindre un autre événement"
           }
         }
       }
@@ -2789,40 +2534,6 @@
         }
       }
     },
-    "New\nprogram.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New\nprogram."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nouveau\nprogramme."
-          }
-        }
-      }
-    },
-    "Edit\nprogram.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit\nprogram."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Modifier\nle programme."
-          }
-        }
-      }
-    },
     "Delete this program": {
       "extractionState": "manual",
       "localizations": {
@@ -2976,23 +2687,6 @@
         }
       }
     },
-    "Events": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Events"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Événements"
-          }
-        }
-      }
-    },
     "Continue": {
       "extractionState": "manual",
       "localizations": {
@@ -3112,23 +2806,6 @@
         }
       }
     },
-    "No %@.": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No %@."
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun %@."
-          }
-        }
-      }
-    },
     "Create the first one, then invite your team.": {
       "extractionState": "manual",
       "localizations": {
@@ -3197,23 +2874,6 @@
         }
       }
     },
-    "Event code": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Event code"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Code de l'événement"
-          }
-        }
-      }
-    },
     "Upcoming": {
       "extractionState": "manual",
       "localizations": {
@@ -3278,23 +2938,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Actions pour %@"
-          }
-        }
-      }
-    },
-    "e.g. %@ in November": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "e.g. %@ in November"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ex. %@ de novembre"
           }
         }
       }
@@ -3690,23 +3333,6 @@
         }
       }
     },
-    "%@, %@. Change %@": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, %@. Change %@"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@, %@. Changer de %@"
-          }
-        }
-      }
-    },
     "No prospects": {
       "extractionState": "manual",
       "localizations": {
@@ -3941,23 +3567,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Envoyez vos prospects à %@ depuis l'onglet Envoi."
-          }
-        }
-      }
-    },
-    "Test event": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Test event"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Événement test"
           }
         }
       }
@@ -4330,6 +3939,516 @@
           "stringUnit": {
             "state": "translated",
             "value": "Rdv d'admission pris"
+          }
+        }
+      }
+    },
+    "Create a session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Créer une session"
+          }
+        }
+      }
+    },
+    "Session name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session name"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom de la session"
+          }
+        }
+      }
+    },
+    "Name": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom"
+          }
+        }
+      }
+    },
+    "Session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session"
+          }
+        }
+      }
+    },
+    "Couldn't load sessions: %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couldn't load sessions: %@"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Impossible de charger les sessions : %@"
+          }
+        }
+      }
+    },
+    "Manages sessions, the team and programs.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manages sessions, the team and programs."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gère les sessions, l'équipe et les programmes."
+          }
+        }
+      }
+    },
+    "Only this session's organizer can do that.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Only this session's organizer can do that."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seul l'organisateur de cette session peut faire cela."
+          }
+        }
+      }
+    },
+    "This session doesn't exist on this phone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This session doesn't exist on this phone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette session n'existe pas sur ce téléphone."
+          }
+        }
+      }
+    },
+    "This file belongs to another session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This file belongs to another session."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce fichier appartient à une autre session."
+          }
+        }
+      }
+    },
+    "This session's key can't be found on this phone.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This session's key can't be found on this phone."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La clé de cette session est introuvable sur ce téléphone."
+          }
+        }
+      }
+    },
+    "No figures for this session yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No figures for this session yet."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas encore de chiffres pour cette session."
+          }
+        }
+      }
+    },
+    "End this session?": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End this session?"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer cette session ?"
+          }
+        }
+      }
+    },
+    "No sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sessions"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune session"
+          }
+        }
+      }
+    },
+    "No session joined": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No session joined"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune session rejointe"
+          }
+        }
+      }
+    },
+    "End the session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End the session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer la session"
+          }
+        }
+      }
+    },
+    "Session finished": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session finished"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session terminée"
+          }
+        }
+      }
+    },
+    "Join another session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join another session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoindre une autre session"
+          }
+        }
+      }
+    },
+    "Sessions": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
+          }
+        }
+      }
+    },
+    "Session code": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session code"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Code de la session"
+          }
+        }
+      }
+    },
+    "Test session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Test session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Session test"
+          }
+        }
+      }
+    },
+    "No sessions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No sessions."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune session."
+          }
+        }
+      }
+    },
+    "Figures appear once prospects are recorded for the current session.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Figures appear once prospects are recorded for the current session."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les chiffres apparaissent dès que des prospects sont enregistrés pour la session en cours."
+          }
+        }
+      }
+    },
+    "%@, %@. Change session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %@. Change session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@, %@. Changer de session"
+          }
+        }
+      }
+    },
+    "e.g. Open day in November": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "e.g. Open day in November"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ex. JPO de novembre"
+          }
+        }
+      }
+    },
+    "Join a session": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Join a session"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rejoindre une session"
+          }
+        }
+      }
+    },
+    "What visitors can be interested in. They stay on this phone for your next sessions.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What visitors can be interested in. They stay on this phone for your next sessions."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce qui peut intéresser les visiteurs. Ils restent sur ce téléphone pour vos prochaines sessions."
+          }
+        }
+      }
+    },
+    "Optional. You can change them later.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Optional. You can change them later."
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Facultatif. Vous pouvez les modifier plus tard."
+          }
+        }
+      }
+    },
+    "Step %lld of %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %lld of %lld"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Étape %lld sur %lld"
+          }
+        }
+      }
+    },
+    "New program": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New program"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouveau programme"
+          }
+        }
+      }
+    },
+    "Edit program": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit program"
+          }
+        },
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le programme"
           }
         }
       }

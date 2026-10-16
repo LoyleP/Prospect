@@ -17,7 +17,7 @@ final class LanguageUITests: XCTestCase {
         app.buttons["languageMenu"].tap()
         app.buttons["Français"].tap()
         XCTAssertTrue(app.staticTexts["Collectez vos prospects"].waitForExistence(timeout: 8), "the whole screen switches to French")
-        XCTAssertTrue(app.buttons["Organiser"].exists || app.staticTexts["Organiser"].exists)
+        XCTAssertTrue(app.buttons["Créer une session"].exists || app.staticTexts["Créer une session"].exists)
 
         app.buttons["languageMenu"].tap()
         app.buttons["English"].tap()

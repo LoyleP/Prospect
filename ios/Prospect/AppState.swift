@@ -59,7 +59,7 @@ final class AppState {
 
     /// The person's display name, written on every prospect they record.
     var agentNom: String { currentOrganization?.displayName ?? "" }
-    var eventLabel: String { currentOrganization?.eventLabel ?? L("Event") }
+    var eventLabel: String { L("Session") }
 
     func program(_ id: UUID?) -> Program? {
         guard let id else { return nil }
@@ -98,7 +98,26 @@ final class AppState {
         }
     }
 
-    /// Onboarding, organizer side.
+    /// Onboarding, organizer side, in one go: this phone becomes the organizer and its first session is created
+    /// and started. If the session cannot be created, the phone stays at onboarding.
+    func createFirstSession(_ draft: SessionDraft) async throws {
+        store.write { $0.identity = StoredIdentity(displayName: draft.cleanOrganizer, role: .admin, eventLabel: L("Session")) }
+        var created: UUID?
+        do {
+            let service = ProspectService.current
+            let session = try await service.createSession(name: draft.cleanName, date: draft.date)
+            created = session.id
+            _ = try await service.updateSession(id: session.id, draft.patch)
+        } catch {
+            if let created { try? await ProspectService.current.deleteSession(id: created) }
+            store.write { $0.identity = nil }
+            throw error
+        }
+        selectedTab = .prospects
+        refresh()
+    }
+
+    /// Onboarding, organizer side, without a session (the identity only).
     func startOrganizing(name: String, eventLabel: String) {
         store.write { $0.identity = StoredIdentity(displayName: name, role: .admin, eventLabel: eventLabel) }
         refresh()

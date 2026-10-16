@@ -50,7 +50,7 @@ struct ExchangeView: View {
             DuplicatesView(groups: vm.duplicateGroups) { vm.archiveDuplicate($0) }
                 .presentationBackground(Color.surfaceBackground)
         }
-        .confirmationDialog(L("End this event?"), isPresented: $confirmEnd, titleVisibility: .visible) {
+        .confirmationDialog(L("End this session?"), isPresented: $confirmEnd, titleVisibility: .visible) {
             Button(L("End")) { vm.finishEvent() }
             Button(L("Cancel"), role: .cancel) {}
         }
@@ -87,7 +87,7 @@ struct ExchangeView: View {
 
     private var empty: some View {
         EmptyStateView(
-            title: appState.isAdmin ? L("No events") : L("No event joined"),
+            title: appState.isAdmin ? L("No sessions") : L("No session joined"),
             message: appState.isAdmin ? L("Create one in the Prospects tab.") : L("Scan the organizer's invitation.")
         )
         .padding(.horizontal, -Space.gutter)
@@ -168,10 +168,10 @@ struct ExchangeView: View {
         }
 
         if event.status != .termine {
-            Button(L("End the event")) { confirmEnd = true }
+            Button(L("End the session")) { confirmEnd = true }
                 .buttonStyle(.secondary)
         } else {
-            Text(L("Event finished")).font(.textSub).foregroundStyle(Color.inkTertiary)
+            Text(L("Session finished")).font(.textSub).foregroundStyle(Color.inkTertiary)
         }
     }
 

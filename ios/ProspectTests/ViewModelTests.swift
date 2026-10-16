@@ -190,7 +190,7 @@ final class AppStateTests: XCTestCase {
         let state = AppState(store: seeded.store, exchange: EventExchange(store: seeded.store, keys: seeded.keys))
         state.startOrganizing(name: "Camille", eventLabel: "JPO")
         XCTAssertEqual(state.phase, .ready)
-        XCTAssertEqual(state.eventLabel, "JPO")
+        XCTAssertEqual(state.eventLabel, "Session", "every session is just called a session")
         XCTAssertTrue(state.isAdmin)
         state.resetDevice()
         XCTAssertEqual(state.phase, .onboarding)

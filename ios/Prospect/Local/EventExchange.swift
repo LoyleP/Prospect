@@ -10,14 +10,14 @@ enum ExchangeError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .noIdentity:      return L("Choose your name first.")
-        case .notOrganizer:    return L("Only this event's organizer can do that.")
-        case .unknownEvent:    return L("This event doesn't exist on this phone.")
+        case .notOrganizer:    return L("Only this session's organizer can do that.")
+        case .unknownEvent:    return L("This session doesn't exist on this phone.")
         case .notAnInvitation: return L("This code isn't a Prospect invitation.")
         case .notAHandover:    return L("This file isn't a Prospect handover.")
         case .notAnEventData:  return L("This data isn't valid.")
-        case .wrongEvent:      return L("This file belongs to another event.")
+        case .wrongEvent:      return L("This file belongs to another session.")
         case .cannotDecrypt:   return L("Can't read this file: it isn't meant for this device.")
-        case .keyMissing:      return L("This event's key can't be found on this phone.")
+        case .keyMissing:      return L("This session's key can't be found on this phone.")
         }
     }
 }

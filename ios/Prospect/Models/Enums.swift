@@ -28,7 +28,7 @@ enum Role: String, CaseIterable, Codable, Sendable {
         switch self {
         case .agent:               return L("Records and edits prospects.")
         case .conseillerFormation: return L("Views prospects and exports data.")
-        case .admin:               return L("Manages events, the team and programs.")
+        case .admin:               return L("Manages sessions, the team and programs.")
         }
     }
 }

@@ -23,13 +23,13 @@ struct EventEditorSheet: View {
             PaperBackground()
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.xl) {
-                    Text(mode == .create ? L("Create: \(eventLabel)") : L("Edit"))
+                    Text(mode == .create ? L("Create a session") : L("Edit"))
                         .font(.displayM.weight(.bold))
                         .foregroundStyle(Color.inkPrimary)
                         .padding(.trailing, 40)
 
-                    LabeledField(title: L("Last name"), isFocused: nameFocused) {
-                        TextField(L("e.g. \(eventLabel) in November"), text: $name)
+                    LabeledField(title: L("Session name"), isFocused: nameFocused) {
+                        TextField(L("e.g. Open day in November"), text: $name)
                             .textInputAutocapitalization(.sentences)
                             .focused($nameFocused)
                             .submitLabel(.done)
@@ -37,18 +37,10 @@ struct EventEditorSheet: View {
                     }
 
                     VStack(alignment: .leading, spacing: Space.m) {
-                        Text("Date")
-                            .font(.textCaption.weight(.semibold))
-                            .foregroundStyle(Color.inkSecondary)
-                            .tracking(0.6)
-                        DatePicker("Date", selection: $date, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
+                        DatePicker(L("Date"), selection: $date, displayedComponents: .date)
                             .environment(\.locale, Language.current.locale)
-                            .tint(Color.inkPrimary)
-                            .card(padding: Space.s)
-                    }
-
-                    VStack(alignment: .leading, spacing: Space.m) {
+                            .font(.textBody).foregroundStyle(Color.inkPrimary)
+                            .tint(Color.accent)
                         Toggle(isOn: Binding(
                             get: { endsAt != nil },
                             set: { endsAt = $0 ? Self.merge(time: Self.defaultEnd(on: date), into: date) : nil }

@@ -36,7 +36,7 @@ struct EventPickerSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.l) {
-                Text(eventLabel)
+                Text(L("Sessions"))
                     .font(.displayS)
                     .foregroundStyle(Color.inkPrimary)
 
@@ -48,7 +48,7 @@ struct EventPickerSheet: View {
                                 .foregroundStyle(Color.onAccent)
                                 .frame(width: 30, height: 30)
                                 .background(Color.accent, in: Circle())
-                            Text(L("Create: \(eventLabel)"))
+                            Text(L("Create a session"))
                                 .font(.textBody.weight(.medium))
                                 .foregroundStyle(Color.inkPrimary)
                             Spacer()

@@ -10,10 +10,53 @@ struct ProgramsSection: View {
     @State private var showNewProgram = false
     @State private var reordering = false
 
+    /// Hidden when a page already titles the list (the session-creation flow).
+    var showsTitle = true
+
     private let service: ProspectServiceProtocol = ProspectService.current
 
     var body: some View {
-        NumberedSection(number: "", title: L("Programs")) {
+        content
+            .task { await appState.reloadPrograms() }
+            .sheet(item: $programToEdit) { program in
+                ProgramEditor(
+                    program: program,
+                    onSave: { name, color in
+                        _ = try await service.updateProgram(id: program.id, name: name, color: color, sortOrder: nil)
+                        await appState.reloadPrograms()
+                    },
+                    onDelete: {
+                        try await service.deleteProgram(id: program.id)
+                        await appState.reloadPrograms()
+                    }
+                )
+            }
+            .sheet(isPresented: $showNewProgram) {
+                ProgramEditor(
+                    program: nil,
+                    onSave: { name, color in
+                        _ = try await service.createProgram(name: name, color: color)
+                        await appState.reloadPrograms()
+                    },
+                    onDelete: nil
+                )
+            }
+            .alert(L("Error"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+                Button("OK") { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+    }
+
+    @ViewBuilder private var content: some View {
+        if showsTitle {
+            NumberedSection(number: "", title: L("Programs")) { list }
+        } else {
+            list
+        }
+    }
+
+    private var list: some View {
             VStack(alignment: .leading, spacing: 0) {
                 ForEach(Array(appState.programs.enumerated()), id: \.element.id) { index, program in
                     HStack(spacing: Space.m) {
@@ -64,36 +107,6 @@ struct ProgramsSection: View {
                 }
                 .foregroundStyle(Color.inkPrimary)
             }
-        }
-        .task { await appState.reloadPrograms() }
-        .sheet(item: $programToEdit) { program in
-            ProgramEditor(
-                program: program,
-                onSave: { name, color in
-                    _ = try await service.updateProgram(id: program.id, name: name, color: color, sortOrder: nil)
-                    await appState.reloadPrograms()
-                },
-                onDelete: {
-                    try await service.deleteProgram(id: program.id)
-                    await appState.reloadPrograms()
-                }
-            )
-        }
-        .sheet(isPresented: $showNewProgram) {
-            ProgramEditor(
-                program: nil,
-                onSave: { name, color in
-                    _ = try await service.createProgram(name: name, color: color)
-                    await appState.reloadPrograms()
-                },
-                onDelete: nil
-            )
-        }
-        .alert(L("Error"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("OK") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
-        }
     }
 
     private func moveButton(_ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -153,13 +166,14 @@ private struct ProgramEditor: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: Space.xl) {
-                Text(program == nil ? L("New\nprogram.") : L("Edit\nprogram."))
+                Text(program == nil ? L("New program") : L("Edit program"))
                     .font(.displayXL)
                     .foregroundStyle(Color.inkPrimary)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .padding(.trailing, 44)
 
-                LabeledField(title: L("Last name"), isFocused: nameFocused) {
+                LabeledField(title: L("Name"), isFocused: nameFocused) {
                     TextField(L("e.g. Computer Science"), text: $name).focused($nameFocused)
                 }
 

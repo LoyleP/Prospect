@@ -61,7 +61,7 @@ final class LiveActivityManager {
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
         Task { await endAll() }
         let attributes = SessionActivityAttributes(
-            sessionName: L("Test event"),
+            sessionName: L("Test session"),
             sessionDate: Date().formatted(.dateTime.day().month(.wide).year().locale(Language.current.locale)),
             language: Language.current.rawValue
         )

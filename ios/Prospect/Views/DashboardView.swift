@@ -27,7 +27,7 @@ struct DashboardView: View {
                 } else if viewModel.sessions.isEmpty {
                     EmptyStateView(
                         title: L("Nothing to count."),
-                        message: L("Figures appear once prospects are recorded for the current \(appState.eventLabel.lowercased()).")
+                        message: L("Figures appear once prospects are recorded for the current session.")
                     )
                     .padding(.horizontal, -Space.gutter)
                 } else {
@@ -35,7 +35,7 @@ struct DashboardView: View {
                     importsBanner
                         .animation(.curve(Motion.standard), value: viewModel.selectedSession?.session.importsComplete)
                     if viewModel.prospects.isEmpty && !viewModel.isLoading {
-                        EmptyStateView(title: L("No prospects."), message: L("No figures for this event yet."))
+                        EmptyStateView(title: L("No prospects."), message: L("No figures for this session yet."))
                             .padding(.horizontal, -Space.gutter)
                     } else {
                         overview

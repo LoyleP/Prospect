@@ -18,11 +18,11 @@ struct SessionListView: View {
                 ProgressView().tint(Color.inkTertiary)
             } else if vm.summaries.isEmpty {
                 EmptyStateView(
-                    title: L("No \(appState.eventLabel.lowercased())."),
+                    title: L("No sessions."),
                     message: appState.isAdmin
                         ? L("Create the first one, then invite your team.")
                         : L("Scan the organizer's invitation from your profile."),
-                    actionTitle: appState.isAdmin ? L("Create: \(appState.eventLabel)") : nil,
+                    actionTitle: appState.isAdmin ? L("Create a session") : nil,
                     action: appState.isAdmin ? { vm.showNewSessionSheet = true } : nil
                 )
             } else if let selected = vm.selectedSummary {
@@ -67,14 +67,10 @@ struct SessionListView: View {
             .presentationDetents([.medium, .large])
             .presentationBackground(Color.surfaceBackground)
         }
-        .sheet(isPresented: $vm.showNewSessionSheet) {
-            EventEditorSheet(
-                mode: .create, eventLabel: appState.eventLabel,
-                name: $vm.newSessionName, date: $vm.newSessionDate, status: .constant(.enCours), endsAt: $vm.newSessionEndsAt,
-                canSave: vm.canCreate, isSaving: vm.isLoading
-            ) { Task { await vm.createSession() } }
-            .presentationDetents([.large])
-            .presentationBackground(Color.surfaceBackground)
+        .sheet(isPresented: $vm.showNewSessionSheet, onDismiss: { vm.newSessionPage = 0 }) {
+            NewSessionSheet(page: $vm.newSessionPage) { draft in try await vm.createSession(draft) }
+                .presentationDetents([.large])
+                .presentationBackground(Color.surfaceBackground)
         }
         .sheet(item: $vm.sessionToEdit) { _ in
             EventEditorSheet(

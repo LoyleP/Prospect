@@ -9,31 +9,25 @@ struct OnboardingView: View {
     @State private var step: Step = .choose
     /// Which way the last step change went, so the next screen enters from the side we are heading to.
     @State private var forward = true
+    /// The joining agent or advisor's own name.
     @State private var name = ""
-    @State private var eventLabel = L("Event")
-    @State private var customLabel = ""
+    private var cleanName: String { name.trimmingCharacters(in: .whitespaces) }
+    /// Which of the three session-creation pages is showing.
+    @State private var organizePage = 0
     @State private var invitation: Invitation?
     /// Who is joining: an agent records prospects, a conseiller receives what the organizer shares.
     @State private var joinRole: Role = .agent
     @State private var pasted = ""
     @State private var errorText: String?
     @FocusState private var focused: Field?
-    private enum Field { case name, custom, paste }
+    private enum Field { case name, paste }
 
-    /// The words an organizer may call their events. What they pick is saved as typed, in the language it was picked in.
-    private var labels: [String] { [L("Event"), L("Open day"), L("Fair"), "Forum", L("Open house")] }
     /// A plain slide: the next step comes in from the trailing edge and the current one leaves by the leading edge.
     /// Going back reverses both, so the path is always the same one walked backwards.
     private var slide: AnyTransition {
         forward
             ? .asymmetric(insertion: .move(edge: .trailing), removal: .move(edge: .leading))
             : .asymmetric(insertion: .move(edge: .leading), removal: .move(edge: .trailing))
-    }
-
-    private var cleanName: String { name.trimmingCharacters(in: .whitespaces) }
-    private var cleanLabel: String {
-        let custom = customLabel.trimmingCharacters(in: .whitespaces)
-        return custom.isEmpty ? eventLabel : custom
     }
 
     var body: some View {
@@ -101,10 +95,10 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.bottom, Space.m)
             .appears(0)
-            choiceRow(icon: "flag", title: L("Organize")) { go(.organize) }
+            choiceRow(icon: "plus", title: L("Create a session")) { go(.organize) }
                 .accessibilityIdentifier("organize")
                 .appears(1)
-            choiceRow(icon: "qrcode.viewfinder", title: L("Join")) { go(.join) }
+            choiceRow(icon: "qrcode.viewfinder", title: L("Join a session")) { go(.join) }
                 .accessibilityIdentifier("join")
                 .appears(2)
         }
@@ -137,55 +131,16 @@ struct OnboardingView: View {
     // MARK: Organize
 
     private var organize: some View {
-        VStack(alignment: .leading, spacing: Space.xl) {
-            Text(L("Organize")).font(.displayL).foregroundStyle(Color.inkPrimary)
-
-            TextField("", text: $name, prompt: Text(L("Your name")).foregroundStyle(Color.inkTertiary))
-                .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(Color.inkPrimary)
-                .tint(Color.accent)
-                .textContentType(.name)
-                .textInputAutocapitalization(.words)
-                .focused($focused, equals: .name)
-                .submitLabel(.continue)
-                .onSubmit(finishOrganizing)
-                .accessibilityIdentifier("organizerName")
-
-            VStack(alignment: .leading, spacing: Space.s) {
-                Text(L("Events")).font(.textSub.weight(.medium)).foregroundStyle(Color.inkTertiary)
-                PillFlowLayout(spacing: Space.s) {
-                    ForEach(labels, id: \.self) { label in
-                        ChoiceChip(title: label, isSelected: customLabel.isEmpty && eventLabel == label) {
-                            eventLabel = label; customLabel = ""
-                        }
-                    }
-                }
-                LabeledField(title: L("Other"), isFocused: focused == .custom) {
-                    TextField(eventLabel, text: $customLabel)
-                        .textInputAutocapitalization(.sentences)
-                        .focused($focused, equals: .custom)
-                }
-            }
-            Spacer(minLength: Space.l)
-            Button(L("Continue"), action: finishOrganizing)
-                .buttonStyle(.primary)
-                .disabled(cleanName.isEmpty)
-                .accessibilityIdentifier("continueOrganize")
-                .padding(.bottom, Space.s)
+        SessionCreationFlow(page: $organizePage, askOrganizerName: true) { draft in
+            try await appState.createFirstSession(draft)
         }
-        .frame(maxHeight: .infinity, alignment: .top)
-    }
-
-    private func finishOrganizing() {
-        guard !cleanName.isEmpty else { return }
-        appState.startOrganizing(name: cleanName, eventLabel: cleanLabel)
     }
 
     // MARK: Join
 
     private var join: some View {
         VStack(alignment: .leading, spacing: Space.l) {
-            Text(L("Join")).font(.displayL).foregroundStyle(Color.inkPrimary)
+            Text(L("Join a session")).font(.displayL).foregroundStyle(Color.inkPrimary)
             ZStack(alignment: .top) {
                 if let invitation {
                     VStack(alignment: .leading, spacing: Space.l) {
@@ -294,7 +249,9 @@ struct OnboardingView: View {
 
     private func back() {
         errorText = nil
-        if step == .join, invitation != nil {
+        if step == .organize, organizePage > 0 {
+            organizePage -= 1
+        } else if step == .join, invitation != nil {
             invitation = nil; pasted = ""
             appState.pendingInvitation = nil
         } else {
@@ -307,10 +264,7 @@ struct OnboardingView: View {
         focused = nil
         Haptics.selection()
         withAnimation(.curve(Motion.standard)) { step = next }
-        // Bring the keyboard up after the slide, not during it.
-        if next == .organize {
-            Task { try? await Task.sleep(for: .milliseconds(Int(Motion.standard * 1000))); focused = .name }
-        }
+        if next == .organize { organizePage = 0 }
     }
 
     private func tryInvitation(_ text: String, fromScan: Bool = false) {

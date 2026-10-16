@@ -16,13 +16,7 @@ final class SessionListViewModel {
 
     // New event sheet
     var showNewSessionSheet = false
-    var newSessionName: String = ""
-    var newSessionDate: Date = .now
-    var newSessionEndsAt: Date?
-
-    var canCreate: Bool {
-        !newSessionName.trimmingCharacters(in: .whitespaces).isEmpty
-    }
+    var newSessionPage = 0
 
     // Edit event sheet
     var sessionToEdit: SessionSummary?
@@ -55,31 +49,25 @@ final class SessionListViewModel {
                 selectedSummary = activeSummaries.first(where: { $0.statutSession == .enCours }) ?? activeSummaries.first ?? summaries.first
             }
         } catch {
-            errorMessage = L("Couldn't load events: \(error.localizedDescription)")
+            errorMessage = L("Couldn't load sessions: \(error.localizedDescription)")
         }
     }
 
-    func createSession() async {
-        guard canCreate else { return }
-        isLoading = true
-        defer { isLoading = false }
+    /// Creates the session with everything set in the creation flow, then selects it. Throws so the flow can show why.
+    func createSession(_ draft: SessionDraft) async throws {
+        var created: SessionSummary?
         do {
-            let created = try await service.createSession(
-                name: newSessionName.trimmingCharacters(in: .whitespaces),
-                date: newSessionDate
-            )
-            if let endsAt = newSessionEndsAt {
-                _ = try await service.updateSession(id: created.id, SessionPatch(endsAt: endsAt))
-            }
-            newSessionName = ""
-            newSessionDate = .now
-            newSessionEndsAt = nil
-            showNewSessionSheet = false
-            selectedSummary = created
-            await load()
+            let summary = try await service.createSession(name: draft.cleanName, date: draft.date)
+            created = summary
+            _ = try await service.updateSession(id: summary.id, draft.patch)
         } catch {
-            errorMessage = L("Couldn't create: \(error.localizedDescription)")
+            if let created { try? await service.deleteSession(id: created.id) }
+            throw error
         }
+        showNewSessionSheet = false
+        newSessionPage = 0
+        selectedSummary = created
+        await load()
     }
 
     func beginEdit(_ summary: SessionSummary) {

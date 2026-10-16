@@ -256,7 +256,7 @@ struct ProspectListView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(PressableStyle(scale: 0.995))
-        .accessibilityLabel(L("\(summary.name), \(summaryLine). Change \(appState.eventLabel.lowercased())"))
+        .accessibilityLabel(L("\(summary.name), \(summaryLine). Change session"))
         .accessibilityIdentifier("eventPicker")
     }
 

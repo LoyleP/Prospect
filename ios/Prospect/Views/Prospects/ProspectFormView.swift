@@ -10,6 +10,7 @@ struct ProspectFormView: View {
     private enum Field { case prenom, nom, email, phone, notes }
     @FocusState private var focused: Field?
     @State private var touched: Set<Field> = []
+    @State private var showSaved = false
 
     let isReadOnly: Bool
     let onSave: (Prospect) -> Void
@@ -140,6 +141,12 @@ struct ProspectFormView: View {
             .padding(.top, Space.xs)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { if !isReadOnly { saveBar } }
+        .overlay {
+            if showSaved {
+                ProspectSavedBurst(tint: viewModel.programs.first { $0.id == viewModel.programId }?.swiftUIColor ?? .accent)
+                    .transition(.opacity)
+            }
+        }
         .alert(L("Error"), isPresented: Binding(
             get: { vm.errorMessage != nil },
             set: { if !$0 { vm.errorMessage = nil } }
@@ -226,6 +233,11 @@ struct ProspectFormView: View {
         if let saved = await viewModel.save() {
             Haptics.success()
             onSave(saved)
+            if isCreate {
+                // A new prospect gets a short celebration before the sheet closes; edits close at once.
+                withAnimation(.easeOut(duration: 0.12)) { showSaved = true }
+                try? await Task.sleep(for: .milliseconds(850))
+            }
             dismiss()
         } else {
             Haptics.error()

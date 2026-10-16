@@ -70,9 +70,9 @@ final class LocalizationTests: XCTestCase {
     }
 
     func testErrorsAreTranslated() {
-        XCTAssertEqual(ExchangeError.unknownEvent.errorDescription, "This event doesn't exist on this phone.")
+        XCTAssertEqual(ExchangeError.unknownEvent.errorDescription, "This session doesn't exist on this phone.")
         Language.current = .fr
-        XCTAssertEqual(ExchangeError.unknownEvent.errorDescription, "Cet événement n'existe pas sur ce téléphone.")
+        XCTAssertEqual(ExchangeError.unknownEvent.errorDescription, "Cette session n'existe pas sur ce téléphone.")
     }
 
     /// Reads the catalog from the source tree: every entry needs English and French, with the same placeholders.

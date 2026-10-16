@@ -30,7 +30,7 @@ struct ProfileView: View {
 
                 if !appState.isAdmin {
                     VStack(spacing: 0) {
-                        row(L("Join another event"), icon: "qrcode.viewfinder") { showJoin = true }
+                        row(L("Join another session"), icon: "qrcode.viewfinder") { showJoin = true }
                     }
                     .background(Color.surfaceCard, in: RoundedRectangle(cornerRadius: Radius.l, style: .continuous))
                 }
